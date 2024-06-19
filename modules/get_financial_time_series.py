@@ -25,18 +25,18 @@ def load_financial_time_series(
 ):
     """Download and process multiple data from Yahoo finance:
 
-    Args
+    Args:
     ---------------------------------------------------------------------------
-    ticker_dict: dict
+    ticker_dict : dict
         Dictionary of Yahoo finance tickers (items) and his name (values) for download
     initial_date: str
         Initial date for time series in ISO format (YYYY-MM-DD)
-    final_date: str
+    final_date : str
         Final date for time series in ISO format (YYYY-MM-DD)
-    interval: str
+    interval : str
         Frequency between the reported data
     
-    Returns
+    Returns:
     ---------------------------------------------------------------------------
     df_fts : pandas DataFrame
         Dataframe with downloaded financial time series
@@ -88,19 +88,19 @@ def load_financial_time_series(
     return df_financial_time_series
 
 def estimate_covariance_stock_index(df, normalized=True):
-    """Estimate covariance matrix of :
+    """Estimate covariance matrix of financial time series:
 
-    Args
+    Args:
     ---------------------------------------------------------------------------
-    df: pandas DataFrame
+    df : pandas DataFrame
         Dataframe of financial time series with the following columns:
             - Adjusted closed value ("Adj Close")
             - Logarithmic return ("log_return")
             - Normalized logarithmic return ("normalized_log_return")
-    normalized: bool
+    normalized : bool
         Boolean variable for selection of normalized log-return
     
-    Returns
+    Returns:
     ---------------------------------------------------------------------------
     cov_matrix : pandas DataFrame
         Dataframe with the covariances of different financial time series
