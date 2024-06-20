@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thursday June 24 2024
+Created on Thursday June 14 2024
 
-@author: Felipe Abril Bermúdez
+@author: Laura Molero González
+@author: Felipe Segundo Abril Bermúdez
 """
 
 # Libraries ----
@@ -39,7 +40,7 @@ def estimate_p_norm(x, y, p):
 
 # Estimation of coefficient of determination R2 ----
 def estimate_coefficient_of_determination(y, y_fitted):
-    """Estimation of coefficient of determination R2 
+    """Estimation of coefficient of determination R2:
 
     Args:
     ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ def estimate_coefficient_of_determination(y, y_fitted):
 
 # Translate vector values to probabilities ----
 def get_probabilities(x, bins=10, density=True):
-    r"""Estimate probabilities of vector x from the histogram data
+    r"""Estimate probabilities of vector x from the histogram data:
 
     Args:
     ---------------------------------------------------------------------------
@@ -135,7 +136,7 @@ def estimate_renyi_entropy(x, p):
 
 # Estimate mutual information over a two vectors of probabilities ----
 def estimate_mutual_information(x, y, joint_xy):
-    """Estimation of mutual information between two vectors
+    """Estimation of mutual information between two vectors:
 
     Args:
     ---------------------------------------------------------------------------
@@ -173,7 +174,7 @@ def estimate_mutual_information(x, y, joint_xy):
 
 # Estimate shared information distance over a two vectors of probabilities ----
 def estimate_shared_information_distance(x, y, joint_xy):
-    """Estimation of shared information distance between two vectors
+    """Estimation of shared information distance between two vectors:
 
     Args:
     ---------------------------------------------------------------------------
@@ -190,7 +191,8 @@ def estimate_shared_information_distance(x, y, joint_xy):
         Shared information distance of the samples
     """
 
-    shared_information = estimate_renyi_entropy(x = joint_xy, p = 1) - estimate_mutual_information(x = x, y = y, joint_xy = joint_xy)
+    shared_information = estimate_renyi_entropy(x = joint_xy, p = 1) 
+    shared_information -= estimate_mutual_information(x = x, y = y, joint_xy = joint_xy)
     
     return shared_information
 
@@ -200,7 +202,7 @@ def parallel_run(
     arg_list,
     tqdm_bar=False
 ):
-    """Implement parallel run in arbitrary function with input arg_list
+    """Implement parallel run in arbitrary function with input arg_list:
 
     Args:
     ---------------------------------------------------------------------------
@@ -236,7 +238,7 @@ def parallel_run(
 
 # Extract scientific notation in Python string ----
 def extract_sci_notation(number, significant_figures=2):
-    """Extract scientific notation (mantissa and exponent) in Python number
+    """Extract scientific notation (mantissa and exponent) in Python number:
 
     Args:
     ---------------------------------------------------------------------------
@@ -259,7 +261,7 @@ def extract_sci_notation(number, significant_figures=2):
 
 # Define scientific notation in LaTeX string ----
 def define_sci_notation_latex(number, significant_figures=2):
-    """Define scientific notation of Python float number as LaTeX string
+    """Define scientific notation of Python float number as LaTeX string:
 
     Args:
     ---------------------------------------------------------------------------
@@ -283,7 +285,7 @@ def define_sci_notation_latex(number, significant_figures=2):
 
 # Define scientific notation in a vector as Physical Review format ----
 def define_sci_notation_latex_vectorize(x, significant_figures=2):
-    """Define scientific notation of Python numpy array number as LaTeX string
+    """Define scientific notation of Python numpy array number as LaTeX string:
 
     Args:
     ---------------------------------------------------------------------------

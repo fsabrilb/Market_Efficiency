@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thursday June 24 2024
+Created on Thursday June 14 2024
 
+@author: Laura Molero González
 @author: Felipe Segundo Abril Bermúdez
 """
 
@@ -98,7 +99,8 @@ def estimate_covariance_stock_index(df, normalized=True):
             - Logarithmic return ("log_return")
             - Normalized logarithmic return ("normalized_log_return")
     normalized : bool
-        Boolean variable for selection of normalized log-return
+        Boolean variable for selection of normalized log-return (default value
+        True)
     
     Returns:
     ---------------------------------------------------------------------------
@@ -115,7 +117,7 @@ def estimate_covariance_stock_index(df, normalized=True):
     cov_matrix = (
         df[["date", "symbol", column_]]
             .pivot(index = "date", columns = "symbol", values = column_)
-            .cov(min_periods=None, ddof=1, numeric_only=False)
+            .cov(min_periods = None, ddof = 1, numeric_only = False)
             .reset_index(drop = True)
     )
 

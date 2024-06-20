@@ -2,7 +2,8 @@
 """
 Created on Thursday June 24 2024
 
-@author: Felipe Abril Bermúdez
+@author: Laura Molero González
+@author: Felipe Segundo Abril Bermúdez
 """
 
 # Libraries ----
