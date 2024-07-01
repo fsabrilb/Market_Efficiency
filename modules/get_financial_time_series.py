@@ -15,7 +15,7 @@ import yfinance as yf # type: ignore
 # Global options ----
 warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
-pd.set_option('display.max_columns', None)
+pd.set_option("display.max_columns", None)
 
 # Load of financial time series ----
 def load_financial_time_series(
@@ -47,7 +47,13 @@ def load_financial_time_series(
     df_financial_time_series = []
     for ticker, ticker_name in ticker_dict.items():
         # Download data ----
-        df_local = yf.download(tickers = ticker, start = initial_date, end = final_date, interval = interval)
+        df_local = yf.download(
+            tickers = ticker,
+            start = initial_date,
+            end = final_date,
+            interval = interval,
+            progress = False
+        )
 
         if df_local.shape[0] > 0:
             df_local["symbol"] = ticker
@@ -75,7 +81,7 @@ def load_financial_time_series(
             # Estimate log-return with close price ----
             df_local["log_return"] = np.log(df_local["Close"])
             df_local["log_return"] = df_local["log_return"].diff(periods = 1)
-            df_local["normalized_log_return"] = df_local[["log_return"]].apply(lambda x: (x - np.mean(x)) / np.std(x))
+            df_local["z_score_log_return"] = df_local[["log_return"]].apply(lambda x: (x - np.mean(x)) / np.std(x))
 
             # Replace NaN with zeros ----
             df_local["log_return"] = df_local["log_return"].fillna(0)
@@ -88,7 +94,7 @@ def load_financial_time_series(
         
     return df_financial_time_series
 
-def estimate_covariance_stock_index(df, normalized=True):
+def estimate_covariance_stock_index(df, column_="z_score_log_return"):
     """Estimate covariance matrix of financial time series:
 
     Args:
@@ -97,10 +103,13 @@ def estimate_covariance_stock_index(df, normalized=True):
         Dataframe of financial time series with the following columns:
             - Adjusted closed value ("Adj Close")
             - Logarithmic return ("log_return")
-            - Normalized logarithmic return ("normalized_log_return")
-    normalized : bool
-        Boolean variable for selection of normalized log-return (default value
-        True)
+            - Normalized logarithmic return through z-score transformation
+            ("z_score_log_return")
+            - No market components or residuals if Sharpe model is executed
+            (see estimate_market_factors module, estimate_sharpe_model func)
+    column_ : str
+        Column of financial time series dataframe used to estimate covariance
+        matrix (default value "z_score_log_return")
     
     Returns:
     ---------------------------------------------------------------------------
@@ -108,11 +117,6 @@ def estimate_covariance_stock_index(df, normalized=True):
         Dataframe with the covariances of different financial time series
         components (shares for stock indexes)
     """
-
-    if normalized == True:
-        column_ = "normalized_log_return"
-    else:
-        column_ = "log_return"
 
     cov_matrix = (
         df[["date", "symbol", column_]]
@@ -122,3 +126,43 @@ def estimate_covariance_stock_index(df, normalized=True):
     )
 
     return(cov_matrix)
+
+def process_financial_time_series(
+    ticker_dict,
+    initial_date="1900-01-01",
+    final_date="2024-01-01",
+    interval="1d"
+):
+    """Download and process multiple data from Yahoo finance:
+
+    Args:
+    ---------------------------------------------------------------------------
+    ticker_dict : dict
+        Dictionary of Yahoo finance tickers (items) and his name (values) for download
+    initial_date: str
+        Initial date for time series in ISO format (YYYY-MM-DD)
+    final_date : str
+        Final date for time series in ISO format (YYYY-MM-DD)
+    interval : str
+        Frequency between the reported data
+        
+    Returns:
+    ---------------------------------------------------------------------------
+    df_market : pandas DataFrame
+        Dataframe with downloaded financial time series after process columns
+    """
+
+    # Download Yahoo Finance data
+    print("----------------------------------- YAHOO FINANCE DATA -----------------------------------\n")
+    df_market = load_financial_time_series(
+        ticker_dict = ticker_dict,
+        initial_date = initial_date,
+        final_date = final_date,
+        interval = interval
+    )
+
+    # Drop unnecessarily data
+    dropped_columns = ["ticker_name", "step", "Open", "High", "Low", "Close", "Volume"]
+    df_market = df_market.drop(columns = dropped_columns).reset_index().drop(columns = ["Date"])
+
+    return df_market

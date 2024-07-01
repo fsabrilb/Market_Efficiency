@@ -17,10 +17,18 @@ from functools import partial
 # Global options ----
 warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
-pd.set_option('display.max_columns', None)
+pd.set_option("display.max_columns", None)
 
 # Binning the financial time series components for the entropy estimation ----
-def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=12, normalized=True):
+def binning_information_pairs(
+    df,
+    symbol_x,
+    symbol_y,
+    bins_x,
+    bins_y,
+    precision=12,
+    column_="z_score_log_return"
+):
     """Estimate marginal and joint probabilities of two components financial
     time series:
 
@@ -30,7 +38,10 @@ def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=
         Dataframe of financial time series with the following columns:
             - Adjusted closed value ("Adj Close")
             - Logarithmic return ("log_return")
-            - Normalized logarithmic return ("normalized_log_return")
+            - Normalized logarithmic return through z-score transformation
+            ("z_score_log_return")
+            - No market components or residuals if Sharpe model is executed
+            (see estimate_market_factors module, estimate_sharpe_model func)
     symbol_x : str
         Ticker assigned in Yahoo finance for a component in financial time
         series (shares for stock indexes). First symbol named as x
@@ -44,9 +55,9 @@ def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=
     precision : int
         The precision at which to store and display the bins labels (default
         value 12)
-    normalized : bool
-        Boolean variable for selection of normalized log-return (default value
-        True)
+    column_ : str
+        Column of financial time series dataframe used to estimate covariance
+        matrix (default value "z_score_log_return")
     
     Returns:
     ---------------------------------------------------------------------------
@@ -61,12 +72,6 @@ def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=
         associated with symbol_x and symbol_y (shares for stock indexes)
     """
 
-    # Column selection
-    if normalized == True:
-        column_ = "normalized_log_return"
-    else:
-        column_ = "log_return"
-
     # Normalize variables for correct and comparable binningg
     df_binning = (
         df[df["symbol"].isin([symbol_x, symbol_y])][["date", "symbol", column_]]
@@ -75,9 +80,10 @@ def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=
     )
 
     df_binning["rank_x"] = df_binning[symbol_x].max() - df_binning[symbol_x].min()
-    df_binning["rank_y"] = df_binning[symbol_y].max() - df_binning[symbol_y].min()
     df_binning[symbol_x] = (df_binning[symbol_x] - df_binning[symbol_x].min()) / df_binning["rank_x"]
-    df_binning[symbol_y] = (df_binning[symbol_y] - df_binning[symbol_y].min()) / df_binning["rank_y"]
+    if symbol_x != symbol_y:
+        df_binning["rank_y"] = df_binning[symbol_y].max() - df_binning[symbol_y].min()
+        df_binning[symbol_y] = (df_binning[symbol_y] - df_binning[symbol_y].min()) / df_binning["rank_y"]
 
     # Binning data
     df_binning["bin_x"] = pd.cut(
@@ -127,7 +133,7 @@ def binning_information_pairs(df, symbol_x, symbol_y, bins_x, bins_y, precision=
 def estimate_entropy_pairs(
     df,
     precision,
-    normalized,
+    column_,
     log_path,
     log_filename,
     verbose,
@@ -145,13 +151,16 @@ def estimate_entropy_pairs(
         Dataframe of financial time series with the following columns:
             - Adjusted closed value ("Adj Close")
             - Logarithmic return ("log_return")
-            - Normalized logarithmic return ("normalized_log_return")
+            - Normalized logarithmic return through z-score transformation
+            ("z_score_log_return")
+            - No market components or residuals if Sharpe model is executed
+            (see estimate_market_factors module, estimate_sharpe_model func)
     precision : int
         The precision at which to store and display the bins labels (default
         value 12)
-    normalized : bool
-        Boolean variable for selection of normalized log-return (default value
-        True)
+    column_ : str
+        Column of financial time series dataframe used to estimate covariance
+        matrix (default value "z_score_log_return")
     log_path : string
         Local path for logs (default value is "../logs")
     log_filename : string
@@ -177,8 +186,8 @@ def estimate_entropy_pairs(
         information) of financial time series associated with symbol_x and
         symbol_y(shares for stock indexes)
     """
-
-    # Definition of Brownian motion parameters
+    
+    # Definition of Entropy parameters
     symbol_x = entropy_args_list[0]
     symbol_y = entropy_args_list[1]
     bins_x = entropy_args_list[2]
@@ -192,57 +201,57 @@ def estimate_entropy_pairs(
         bins_x = bins_x,
         bins_y = bins_y,
         precision = precision,
-        normalized = normalized
+        column_= column_
     )
 
     # Entropy estimation (Shannon entropy and joint entropy)
-    hx = mf.estimate_renyi_entropy(x = df_1["prob_x"], p = 1)
-    hy = mf.estimate_renyi_entropy(x = df_2["prob_y"], p = 1)
-    hxy = mf.estimate_renyi_entropy(x = df_3["joint_xy"], p = 1)
-    
     x_ = df_1["prob_x"].values
     y_ = df_2["prob_y"].values
     joint_xy = df_3["joint_xy"].values
 
+    hx = mf.estimate_renyi_entropy(x = x_, p = 1)
+    hy = mf.estimate_renyi_entropy(x = y_, p = 1)
+    hxy = mf.estimate_renyi_entropy(x = joint_xy, p = 1)
+
     # Entropy estimation (Mutual information)
-    mi_xx = mf.estimate_mutual_information(x = x_, y = x_, joint_xy = joint_xy)
     mi_xy = mf.estimate_mutual_information(x = x_, y = y_, joint_xy = joint_xy)
     mi_yx = mf.estimate_mutual_information(x = y_, y = x_, joint_xy = joint_xy)
-    mi_yy = mf.estimate_mutual_information(x = y_, y = y_, joint_xy = joint_xy)
     
-    # Entropy estimation (Variance of information)
-    si_xx = mf.estimate_shared_information_distance(x = x_, y = x_, joint_xy = joint_xy)
+    # Entropy estimation (Variation of information)
     si_xy = mf.estimate_shared_information_distance(x = x_, y = y_, joint_xy = joint_xy)
     si_yx = mf.estimate_shared_information_distance(x = y_, y = x_, joint_xy = joint_xy)
-    si_yy = mf.estimate_shared_information_distance(x = y_, y = y_, joint_xy = joint_xy)
 
     # Final information
     df_final = pd.DataFrame(
         {
-            "symbol_x" : [symbol_x, symbol_x, symbol_y, symbol_y],
-            "symbol_y" : [symbol_x, symbol_y, symbol_x, symbol_y],
-            "entropy_x" : [hx, hx, hx, hx],
-            "entropy_y" : [hy, hy, hy, hy],
-            "joint_entropy" : [hxy, hxy, hxy, hxy],
-            "mutual_information" : [mi_xx, mi_xy, mi_yx, mi_yy],
-            "shared_information" : [si_xx, si_xy, si_yx, si_yy]
+            "symbol_x" : [symbol_x, symbol_y],
+            "symbol_y" : [symbol_y, symbol_x],
+            "entropy_x" : [hx, hx],
+            "entropy_y" : [hy, hy],
+            "joint_entropy" : [hxy, hxy],
+            "mutual_information" : [mi_xy, mi_yx],
+            "shared_information" : [si_xy, si_yx]
         }
     )
 
-    # Entropy estimation (Jaccard distance)
-    df_final["modified_jaccard_distance"] = df_final["shared_information"] / df_final["joint_entropy"]
+    # Entropy estimation (Rajski distance)
+    df_final["rajski_distance"] = 1 - df_final["shared_information"] / df_final["joint_entropy"]
+
+    # Filter duplicates (symbol_x == symbol_y)
+    if symbol_x == symbol_y:
+        df_final.drop_duplicates(subset = ["symbol_x", "symbol_y"], inplace = True)
 
     # Function development
     if verbose >= 1:
         with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
             file.write(
-                "Entropy estimation: s_x={}, bins_x={}, s_y={}, bins_y={}, precision={}, normalized={}\n".format(
+                "Entropy estimation: s_x={}, bins_x={}, s_y={}, bins_y={}, precision={}, column={}\n".format(
                     symbol_x,
                     bins_x,
                     symbol_y,
                     bins_y,
                     precision,
-                    normalized
+                    column_
                 )
             )
 
@@ -253,7 +262,7 @@ def estimate_entropy_matrix(
     df,
     min_bins,
     precision=12,
-    normalized=True,
+    column_="z_score_log_return",
     log_path="../logs",
     log_filename="log_entropy",
     verbose=1,
@@ -273,15 +282,18 @@ def estimate_entropy_matrix(
         Dataframe of financial time series with the following columns:
             - Adjusted closed value ("Adj Close")
             - Logarithmic return ("log_return")
-            - Normalized logarithmic return ("normalized_log_return")
+            - Normalized logarithmic return through z-score transformation
+            ("z_score_log_return")
+            - No market components or residuals if Sharpe model is executed
+            (see estimate_market_factors module, estimate_sharpe_model func)
     min_bins : int
         Minimum number of bins accepted to estimate the entropies
     precision : int
         The precision at which to store and display the bins labels (default
         value 12)
-    normalized : bool
-        Boolean variable for selection of normalized log-return (default value
-        True)
+    column_ : str
+        Column of financial time series dataframe used to estimate covariance
+        matrix (default value "z_score_log_return")
     log_path : string
         Local path for logs (default value is "../logs")
     log_filename : string
@@ -303,7 +315,7 @@ def estimate_entropy_matrix(
         estimate_entropy_pairs,
         df,
         precision,
-        normalized,
+        column_,
         log_path,
         log_filename,
         verbose
@@ -321,8 +333,8 @@ def estimate_entropy_matrix(
     df_symbols["bin_value"] = df_symbols["bin_value"].apply(lambda x: int(np.sqrt(x)))
     df_symbols = pd.DataFrame(
         {
-            "index_x" :np.repeat(df_symbols["index"], df_symbols.shape[0]),
-            "index_y" :np.tile(df_symbols["index"], df_symbols.shape[0]),
+            "index_x" : np.repeat(df_symbols["index"], df_symbols.shape[0]),
+            "index_y" : np.tile(df_symbols["index"], df_symbols.shape[0]),
             "symbol_x" : np.repeat(df_symbols["symbol"], df_symbols.shape[0]),
             "symbol_y" : np.tile(df_symbols["symbol"], df_symbols.shape[0]),
             "bins_x" : np.repeat(df_symbols["bin_value"], df_symbols.shape[0]),

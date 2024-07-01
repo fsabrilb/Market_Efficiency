@@ -87,7 +87,7 @@ def estimate_sharpe_model(df):
             )
         )
 
-        print("- Finished Sharpe model for stock: {}".format(stock))
+        #print("- Finished Sharpe model for stock: {}".format(stock))
     
     # Final Dataframe of sharpe model
     df_sharpe = pd.concat(df_sharpe)
@@ -288,15 +288,13 @@ def get_market_components(df_tracy_widom, eigen_values, n, alpha=0.01):
     return(k)
 
 # Estimate Onatski R statistic vector ----
-def estimate_onatski_statistic(df, k_max=8):
+def estimate_onatski_statistic(eigen_values, k_max=8):
     """Compute the Onatski R statistics:
 
     Args:
     ---------------------------------------------------------------------------
-    df : pandas DataFrame
-        Dataframe of financial time series ordered such that every column
-        corresponds to a component in financial time series (shares for stock
-        indexes)
+    eigen_values : numpy array 1D
+        Vector with the eigenvalues of the covariance random matrix
     k_max : int
         Maximum number of factors considered in the Onatski test (default value
         is 8)
@@ -308,24 +306,17 @@ def estimate_onatski_statistic(df, k_max=8):
         statistically significant factors in a random matrix
     """
 
-    # Splitting matrix for construct Gaussian unitary ensemble (GUE)
-    data_1 = df.iloc[:int(df.shape[0] / 2),:]
-    data_2 = df.iloc[int(df.shape[0] / 2):,:]
-    X = data_1.values + data_2.values * 1j
-    gue = pd.DataFrame((1 / data_1.shape[0]) * X.conjugate().T@X)
-    eigenvalues_gue = eigh(gue)[0]
-
-    # Estimates R statitic (invariant under center and scaling of the eigenvalues)
-    eigenvalues_gue = (np.flipud(eigenvalues_gue) - 2) * np.power(data_1.shape[0], 2.0 / 3)
+    # Estimates R statistic (invariant under center and scaling of the eigenvalues)
+    eigen_values = (np.flipud(eigen_values) - 2) * np.power(len(eigen_values), -2.0 / 3)
+    eigen_values = eigen_values[:(k_max + 2)]
     
-    r_statistic = np.zeros(len(eigenvalues_gue) - 2)
-    for i in range(r_statistic):
-        delta_gue = eigenvalues_gue[i + 1] - eigenvalues_gue[i + 2]
-        if delta_gue != 0:
-            r_statistic[i] = (eigenvalues_gue[i] - eigenvalues_gue[i + 1]) / delta_gue
+    r_statistic = np.zeros(k_max)
+    for i in range(len(r_statistic)):
+        delta = eigen_values[i + 1] - eigen_values[i + 2]
+        if delta != 0:
+            r_statistic[i] = (eigen_values[i] - eigen_values[i + 1]) / delta
         else:
             r_statistic[i] = 0
-    r_statistic = r_statistic[:k_max]
     
     return r_statistic
 
@@ -499,14 +490,15 @@ def get_market_efficiency(
     bouchaud_filter,
     n,
     df_tracy_widom,
-    alphas
+    alphas,
+    k_max,
+    df_onatski,
+    levels
 ):
-    """Estimate covariance and entropy matrix of financial time series
-    according to:
-        initial_date = market_args_list[k, 0]
-        final_date   = market_args_list[k, 1]
-    for k in {1, 2,..., n_dates}, where n_dates represent all possible pairs
-    in dates of financial time series after a size of time window is selected
+    """Estimate cmarket components and factors of a financial time series for a
+    selected time window such that:
+        initial_date = market_args_list[0]
+        final_date   = market_args_list[1]
         
     Args:
     ---------------------------------------------------------------------------
@@ -551,6 +543,15 @@ def get_market_efficiency(
     n : float
         Theoretical length of the time series such that q = p/n, where p is the
         number of components in financial time series (shares in a stock index)
+    k_max : int
+        Maximum number of factors considered in the Onatski test (default value
+        is 8)
+    df_onatski : pandas DataFrame
+        Dataframe of quantiles of Onatski test distribution:
+            - Level ("level")
+            - z-score of the R statistic according to the level (other columns)
+	levels : int
+        Integer values for filtering df_onatski
     
     Returns:
     ---------------------------------------------------------------------------
@@ -573,7 +574,7 @@ def get_market_efficiency(
         market_args_list = market_args_list
     )
 
-    # Apply Bouchaud's clipping filter ----
+    # Matrix preparation
     df_cov = (
         df_data[["symbol_x", "symbol_y", "correlation"]]
             .sort_values(["symbol_x", "symbol_y", "correlation"], ascending = [True, True, True])
@@ -588,6 +589,7 @@ def get_market_efficiency(
             .pivot(index = "symbol_x", columns = "symbol_y", values = "modified_rajski_distance")
     )
 
+    # Apply Bouchaud's clipping filter
     if bouchaud_filter:
         dropped_eigenvalues_cov, df_cov = clipping_covariance_matrix(covariance_matrix = df_cov, n = n)
         dropped_eigenvalues_entropy, df_entropy = clipping_covariance_matrix(covariance_matrix = df_entropy, n = n)
@@ -597,45 +599,84 @@ def get_market_efficiency(
 
     # Estimation of eigenvalues for matrices (Covariance and Entropy)
     eigenvalues_cov = eigh(df_cov)[0]
-    eigenvalues_entropy = eigh(df_cov)[0]
+    eigenvalues_entropy = eigh(df_entropy)[0]
 
     # Apply Tracy-Widom test for market components estimation
+    components_cov = []
+    components_entropy = []
     for alpha_ in alphas:
         try:
-            components_cov = get_market_components(
-                df_tracy_widom = df_tracy_widom,
-                eigen_values = eigenvalues_cov,
-                n = n,
-                alpha = alpha_
+            components_cov.append(
+                get_market_components(
+                    df_tracy_widom = df_tracy_widom,
+                    eigen_values = eigenvalues_cov,
+                    n = n,
+                    alpha = alpha_
+                )
             )
 
-            components_entropy = get_market_components(
-                df_tracy_widom = df_tracy_widom,
-                eigen_values = eigenvalues_entropy,
-                n = n,
-                alpha = alpha_
+            components_entropy.append(
+                get_market_components(
+                    df_tracy_widom = df_tracy_widom,
+                    eigen_values = eigenvalues_entropy,
+                    n = n,
+                    alpha = alpha_
+                )
             )
-        except:
-            components_cov = 0
-            components_entropy = 0
+        except Exception as e:
+            components_cov.append(0)
+            components_entropy.append(0)
+    
+    # Apply Onatski R statistic test for market factors estimation
+    r_statistic_cov = estimate_onatski_statistic(eigen_values = eigenvalues_cov, k_max = k_max)
+    r_statistic_entropy = estimate_onatski_statistic(eigen_values = eigenvalues_entropy, k_max = k_max)
+    
+    factors_cov = []
+    factors_entropy = []
+    for level_ in levels:
+        try:
+            factors_cov.append(
+                get_significal_test_onatski(
+                    df_onatski = df_onatski,
+                    r_statistics = r_statistic_cov,
+                    level = level_
+                )
+            )
 
+            factors_entropy.append(
+                get_significal_test_onatski(
+                    df_onatski = df_onatski,
+                    r_statistics = r_statistic_entropy,
+                    level = level_
+                )
+            )
+        except Exception as e:
+            factors_cov.append(k_max)
+            factors_entropy.append(k_max)
 
-    # dropped_eigenvalues_cov, dropped_eigenvalues_entropy
-    # components_cov, components_entropy
-    # RESIDUALS
-	# Add number of dropped eigenvalues
-	# Tracy widow test with Alpha 1,5,10 (try:, except)
+            # Function development ----
+            #if verbose >= 1:
+            #    with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
+            #        file.write("No estimated TFS parameters for {} with {} max steps and {}-norm\n".format(symbol, n_step, p_norm))
+            #        file.write("{}\n".format(e))
 
-    # Onatski
-        # R statistics vectorc(try:, except) for returns and residuals
-    # Factor Onatski Levels 1, 5, 10(fuera ciclo in range(m):)
-
-    #Final data
-    #    * Factors Returns L1,5,10
-    #    * Factors Residuals L1,5,10
-    #    * Components Tracy-Widow 
+    # Final dataframe resume
+    df_final = pd.DataFrame(
+        {
+            "initial_date" : np.repeat(market_args_list[0], len(alphas) * len(levels)),
+            "final_date" : np.repeat(market_args_list[1], len(alphas) * len(levels)),
+            "column_" : np.repeat(column_, len(alphas) * len(levels)),
+            "dropped_eigen_cov" : np.repeat(dropped_eigenvalues_cov, len(alphas) * len(levels)),
+            "dropped_eigen_entropy" : np.repeat(dropped_eigenvalues_entropy, len(alphas) * len(levels)),
+            "alpha" : np.tile(alphas, len(levels)),
+            "n_components_cov" : np.tile(components_cov, len(levels)),
+            "n_components_entropy" : np.tile(components_entropy, len(levels)),
+            "level" : np.repeat(levels, len(alphas)),
+            "n_factors_cov" : np.repeat(factors_cov, len(alphas)),
+            "n_factors_entropy" : np.repeat(factors_entropy, len(alphas))
+        }
+    )
 
     return df_final
 
-# Apply Bouchaud's clipping filter ----
-#clipping_covariance_matrix(covariance_matrix, n)
+# RESIDUALS EFFICIENCY

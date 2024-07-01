@@ -155,10 +155,6 @@ def estimate_mutual_information(x, y, joint_xy):
     mutual_information : float
         Mutual information of the samples
     """
-    
-    # Normalized array
-    x_normalized = x / np.sum(x)
-    y_normalized = y / np.sum(x)
 
     # Mutual information
     hx = estimate_renyi_entropy(x = x, p = 1)
@@ -166,9 +162,9 @@ def estimate_mutual_information(x, y, joint_xy):
     hxy = estimate_renyi_entropy(x = joint_xy, p = 1)
     
     mutual_information = hx + hy - hxy
-    if len(x_normalized) == len(y_normalized):
-        if (x_normalized == y_normalized).all():
-            mutual_information = 0
+    if len(x) == len(y):
+        if (np.array(x) == np.array(y)).all():
+            mutual_information = hx
 
     return mutual_information
 
