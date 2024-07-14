@@ -321,7 +321,7 @@ def estimate_onatski_statistic(eigen_values, k_max=8):
     return r_statistic
 
 # Estimate number of market factors from Tracy-Widom probability given statistical significance (alpha) ----
-def get_significal_test_onatski(df_onatski, r_statistics, level=1):
+def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
     """Calculate the number of statistically significant factors in a market
     using the z-score table of the Onatski test and Onatski R statistic:
 
@@ -361,6 +361,59 @@ def get_significal_test_onatski(df_onatski, r_statistics, level=1):
         factors = np.argmax(logical == False)
     
     return factors
+
+# 
+def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
+    """Calculate the number of statistically significant factors in a market
+    using the Onatski algorithm of Edge distribution (ED) (2010):
+
+    Args:
+    ---------------------------------------------------------------------------
+    eigen_values : numpy array 1D
+        Vector with the eigenvalues of the covariance random matrix
+    k_max : int
+        Maximum number of factors considered in the Onatski test (default value
+        is 7)
+    max_points : int
+        Maximum number of points used to define the convergence of ED algorithm
+
+    Returns:
+    ---------------------------------------------------------------------------
+    factors : int
+        Number of statistically significant factors for a market
+    """
+
+    # Initial step for estimation of market factors
+    eigen_values = np.flipud(eigen_values)
+    delta_eigen_values = -np.diff(eigen_values)
+
+    # Auxiliary function for estimate optimal delta (see r(delta) in Onatski (2010))
+    def r_delta(delta):
+        if np.all(delta_eigen_values < delta):
+            factors = 0
+        else:
+            factors = np.max(np.argwhere(delta_eigen_values >= delta)) + 1
+
+        return factors
+    
+    regressors = 4
+    j_min = np.power(np.arange(start = 0, stop = regressors, step = 1), 2.0 / 3)
+    j_max = np.power(np.arange(start = k_max, stop = k_max + regressors, step = 1), 2.0 / 3)
+    linear_regression_min = linregress(j_min, eigen_values[0:regressors])
+    linear_regression_max = linregress(j_max, eigen_values[k_max:k_max+regressors])
+
+    delta_min = 2 * np.min(np.abs([linear_regression_min.slope, linear_regression_max.slope]))
+    delta_max = 2 * np.max(np.abs([linear_regression_min.slope, linear_regression_max.slope]))
+
+    # Compute number of factors
+    factors = np.zeros(int(max_points))
+    deltas_ = np.linspace(delta_min, delta_max, int(max_points))
+    for k in range(len(deltas_)):
+        factors[k] = r_delta(delta = deltas_[k])
+    factors = np.min([np.max(factors), k_max])
+    
+    return factors
+
 
 # Deployment of total Efficiency Analysis in a time window selected ----
 def get_market_efficiency_data_window(
@@ -636,7 +689,7 @@ def get_market_efficiency(
     for level_ in levels:
         try:
             factors_cov.append(
-                get_significal_test_onatski(
+                get_significancy_test_onatski(
                     df_onatski = df_onatski,
                     r_statistics = r_statistic_cov,
                     level = level_
@@ -644,7 +697,7 @@ def get_market_efficiency(
             )
 
             factors_entropy.append(
-                get_significal_test_onatski(
+                get_significancy_test_onatski(
                     df_onatski = df_onatski,
                     r_statistics = r_statistic_entropy,
                     level = level_
@@ -660,6 +713,22 @@ def get_market_efficiency(
             #        file.write("No estimated TFS parameters for {} with {} max steps and {}-norm\n".format(symbol, n_step, p_norm))
             #        file.write("{}\n".format(e))
 
+    # Estimate Edge distribution (ED)
+    try:
+        edge_distribution_cov = get_onatski_edge_distribution(
+            eigen_values = eigenvalues_cov,
+            k_max = k_max,
+            max_points = 1e3
+        )
+        edge_distribution_entropy = get_onatski_edge_distribution(
+            eigen_values = eigenvalues_entropy,
+            k_max = k_max,
+            max_points = 1e3
+        )
+    except:
+        edge_distribution_cov = 0
+        edge_distribution_entropy = 0
+
     # Final dataframe resume
     df_final = pd.DataFrame(
         {
@@ -673,10 +742,26 @@ def get_market_efficiency(
             "n_components_entropy" : np.tile(components_entropy, len(levels)),
             "level" : np.repeat(levels, len(alphas)),
             "n_factors_cov" : np.repeat(factors_cov, len(alphas)),
-            "n_factors_entropy" : np.repeat(factors_entropy, len(alphas))
+            "n_factors_entropy" : np.repeat(factors_entropy, len(alphas)),
+            "edge_distribution_cov" : np.repeat(edge_distribution_cov, len(alphas) * len(levels)),
+            "edge_distribution_entropy" : np.repeat(edge_distribution_entropy, len(alphas) * len(levels))
         }
     )
 
     return df_final
 
 # RESIDUALS EFFICIENCY
+# scipy.optimize.minimize doesn't works well
+#result = minimize(
+#    r_delta,
+#    x0 = 1,
+#    bounds = [(delta_min, delta_max)],
+#    method = "nelder-mead",
+#    options = {"disp" : True, "xatol" : 1e-12}
+#)
+#if result.success:
+#    fitted_delta = result.x
+#    print(fitted_delta)
+#    print(result.fun)
+#else:
+#    raise ValueError(result.message)
