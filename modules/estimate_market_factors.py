@@ -121,7 +121,7 @@ def estimate_sharpe_model(df):
 
     del df_sharpe["temp_lr_mean"], df_sharpe["temp_zlr_mean"], df_sharpe["temp_lr_std"], df_sharpe["temp_zlr_std"]
 
-    return df_sharpe
+    return(df_sharpe)
 
 # Apply Bouchaud's clipping filter ----
 def clipping_covariance_matrix(covariance_matrix, n):
@@ -239,7 +239,7 @@ def estimate_wishart_order_2(p, n, df_tracy_widom, lambda_1):
     """
 
     mu = np.power(np.sqrt(n - 0.5) + np.sqrt(p - 0.5), 2)
-    sigma = np.power(np.sqrt(mu / (n - 0.5)) + np.sqrt(mu / (p - 0.5)), 1.0 / 3)
+    sigma = np.sqrt(mu) * np.power(np.sqrt(1 / (n - 0.5)) + np.sqrt(1 / (p - 0.5)), 1.0 / 3)
     z_score_lambda = (n * lambda_1 - mu) / sigma
     probability = estimate_tracy_widom_probability(df_tracy_widom = df_tracy_widom, z_score = z_score_lambda)
     return(probability)
@@ -287,6 +287,31 @@ def get_market_components(df_tracy_widom, eigen_values, n, alpha=0.01):
     k = np.argmax(statistical_significances >= alpha)
     return(k)
 
+# Estimate number of market components from Marchenko-Pastur law ----
+def get_market_components_marchenko_pastur(eigen_values, n):
+    """Calculate the number of components in a market using the probability of
+    the Tracy-Widom distribution assuming a Wishart distribution for the
+    eigenvalues ​​of the non-noise part of the random covariance matrix:
+
+    Args:
+    ---------------------------------------------------------------------------
+    eigen_values : numpy array 1D
+        Vector with the eigenvalues of the covariance random matrix
+    n : int
+        Theoretical length of the time series such that q = N/n, where N is the
+        number of financial time series (shares in a stock index)
+    
+    Returns:
+    ---------------------------------------------------------------------------
+    k : int
+        Number of statistically significant eigenvalues (they are below the
+        level of Marchenko-Pastur upper bound)
+    """
+    
+    lambda_ = np.power(1 + np.sqrt(len(eigen_values) / n), 2)
+    k = np.argmin(eigen_values[np.argsort(-eigen_values)] >= lambda_)
+    return(k)
+
 # Estimate Onatski R statistic vector ----
 def estimate_onatski_statistic(eigen_values, k_max=8):
     """Compute the Onatski R statistics:
@@ -318,7 +343,7 @@ def estimate_onatski_statistic(eigen_values, k_max=8):
         else:
             r_statistic[i] = 0
     
-    return r_statistic
+    return(r_statistic)
 
 # Estimate number of market factors from Tracy-Widom probability given statistical significance (alpha) ----
 def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
@@ -360,7 +385,7 @@ def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
     else:
         factors = np.argmax(logical == False)
     
-    return factors
+    return(factors)
 
 # 
 def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
@@ -394,7 +419,7 @@ def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
         else:
             factors = np.max(np.argwhere(delta_eigen_values >= delta)) + 1
 
-        return factors
+        return(factors)
     
     regressors = 4
     j_min = np.power(np.arange(start = 0, stop = regressors, step = 1), 2.0 / 3)
@@ -412,7 +437,7 @@ def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
         factors[k] = r_delta(delta = deltas_[k])
     factors = np.min([np.max(factors), k_max])
     
-    return factors
+    return(factors)
 
 
 # Deployment of total Efficiency Analysis in a time window selected ----
@@ -527,7 +552,7 @@ def get_market_efficiency_data_window(
         with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
             file.write("- Final data done for dates: {} - {}\n".format(initial_date, final_date))
 
-    return df_final
+    return(df_final)
 
 def get_market_efficiency(
     df,
@@ -611,6 +636,8 @@ def get_market_efficiency(
     df_final : pandas DataFrame
         Dataframe with the covariances and entropies of different financial
         time series components (shares for stock indexes)
+    df_eigen_values : pandas DataFrame
+        Dataframe with the eigenvalues of the covariance and entropy matrices
     """
 
     # Get data for estimation of market efficiency
@@ -654,9 +681,11 @@ def get_market_efficiency(
     eigenvalues_cov = eigh(df_cov)[0]
     eigenvalues_entropy = eigh(df_entropy)[0]
 
-    # Apply Tracy-Widom test for market components estimation
+    # Apply Tracy-Widom test and Marchenko-Pastur law for market components estimation
     components_cov = []
+    components_cov_mp = []
     components_entropy = []
+    components_entropy_mp = []
     for alpha_ in alphas:
         try:
             components_cov.append(
@@ -668,6 +697,10 @@ def get_market_efficiency(
                 )
             )
 
+            components_cov_mp.append(
+                get_market_components_marchenko_pastur(eigen_values = eigenvalues_cov, n = n)
+            )
+
             components_entropy.append(
                 get_market_components(
                     df_tracy_widom = df_tracy_widom,
@@ -676,9 +709,16 @@ def get_market_efficiency(
                     alpha = alpha_
                 )
             )
+
+            components_entropy_mp.append(
+                get_market_components_marchenko_pastur(eigen_values = eigenvalues_entropy, n = n)
+            )
+
         except Exception as e:
             components_cov.append(0)
+            components_cov_mp.append(0)
             components_entropy.append(0)
+            components_entropy_mp.append(0)
     
     # Apply Onatski R statistic test for market factors estimation
     r_statistic_cov = estimate_onatski_statistic(eigen_values = eigenvalues_cov, k_max = k_max)
@@ -739,7 +779,9 @@ def get_market_efficiency(
             "dropped_eigen_entropy" : np.repeat(dropped_eigenvalues_entropy, len(alphas) * len(levels)),
             "alpha" : np.tile(alphas, len(levels)),
             "n_components_cov" : np.tile(components_cov, len(levels)),
+            "n_components_cov_mp" : np.tile(components_cov_mp, len(levels)),
             "n_components_entropy" : np.tile(components_entropy, len(levels)),
+            "n_components_entropy_mp" : np.tile(components_entropy_mp, len(levels)),
             "level" : np.repeat(levels, len(alphas)),
             "n_factors_cov" : np.repeat(factors_cov, len(alphas)),
             "n_factors_entropy" : np.repeat(factors_entropy, len(alphas)),
@@ -748,7 +790,21 @@ def get_market_efficiency(
         }
     )
 
-    return df_final
+    # Eigenvalues information
+    marchenko_pastur = np.power(1 + np.sqrt(len(eigenvalues_cov) / n), 2)
+    df_eigen_values = pd.DataFrame(
+        {
+            "initial_date" : np.repeat(market_args_list[0], len(eigenvalues_cov)),
+            "final_date" : np.repeat(market_args_list[1], len(eigenvalues_cov)),
+            "column_" : np.repeat(column_, len(eigenvalues_cov)),
+            "marchenko_pastur_upper_bound" : np.repeat(marchenko_pastur, len(eigenvalues_cov)),
+            "eigenvalues_id" : np.arange(len(eigenvalues_cov)),
+            "eigenvalues_cov" : eigenvalues_cov,
+            "eigenvalues_entropy" : eigenvalues_entropy
+        }
+    )
+
+    return(df_final, df_eigen_values)
 
 # RESIDUALS EFFICIENCY
 # scipy.optimize.minimize doesn't works well
