@@ -614,13 +614,16 @@ def get_market_efficiency(
     bouchaud_filter : bool
         Bool variable for the application of Bouchaud filter
         (default value False)
+    n : float
+        Theoretical length of the time series such that q = p/n, where p is the
+        number of components in financial time series (shares in a stock index)
     df_tracy_widom : pandas DataFrame
         Dataframe of quantiles of Tracy-Widom distribution:
             - z score ("z_score")
             - Probability of Tracy-Widom distribution ("probability")
-    n : float
-        Theoretical length of the time series such that q = p/n, where p is the
-        number of components in financial time series (shares in a stock index)
+    alpha : float
+        Level of statistical significance. For instance alpha=0.01 corresponds
+        to a 99% confidence interval
     k_max : int
         Maximum number of factors considered in the Onatski test (default value
         is 8)
