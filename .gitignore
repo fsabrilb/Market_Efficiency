@@ -8,8 +8,9 @@ rsconnect/
 # local folders
 input_files/processed_data
 logs/
+output_files/df_*
+output_files/20240831/eigen_evolution/*
 make_file_deployment.sh
 
 # local files
-Metadata.xlsx
 ~$Metadata.xlsx

@@ -794,13 +794,15 @@ def get_market_efficiency(
     )
 
     # Eigenvalues information
-    marchenko_pastur = np.power(1 + np.sqrt(len(eigenvalues_cov) / n), 2)
+    marchenko_pastur_lower = np.power(1 - np.sqrt(len(eigenvalues_cov) / n), 2)
+    marchenko_pastur_upper = np.power(1 + np.sqrt(len(eigenvalues_cov) / n), 2)
     df_eigen_values = pd.DataFrame(
         {
             "initial_date" : np.repeat(market_args_list[0], len(eigenvalues_cov)),
             "final_date" : np.repeat(market_args_list[1], len(eigenvalues_cov)),
             "column_" : np.repeat(column_, len(eigenvalues_cov)),
-            "marchenko_pastur_upper_bound" : np.repeat(marchenko_pastur, len(eigenvalues_cov)),
+            "marchenko_pastur_lower_bound" : np.repeat(marchenko_pastur_lower, len(eigenvalues_cov)),
+            "marchenko_pastur_upper_bound" : np.repeat(marchenko_pastur_upper, len(eigenvalues_cov)),
             "eigenvalues_id" : np.arange(len(eigenvalues_cov)),
             "eigenvalues_cov" : eigenvalues_cov,
             "eigenvalues_entropy" : eigenvalues_entropy

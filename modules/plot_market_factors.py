@@ -129,7 +129,7 @@ def plot_eigen_evolution(
             linestyle = "dashed",
             linewidth = 0.5,
             markersize = 2,
-            label = r"$\lambda_{{{}}}^{{(c)}}(t)$".format(id)
+            label = r"$\lambda_{{{}}}^{{(c)}}(N_{{s}},\tau)$".format(id)
         )
 
     # Plot 1 - EEC - Random Components (Under Marchenko-Pastur law)
@@ -146,15 +146,17 @@ def plot_eigen_evolution(
     # Plot 1 - EEC - Eigenvalues regions bounds (minimum, maximum and Marchenko-Pastur law)
     x_ = df_cov["final_date"]
     y_min = df_cov["eigenvalues_cov_min"]
-    y_mid = df_cov["marchenko_pastur_upper_bound"]
+    y_low = df_cov["marchenko_pastur_lower_bound"]
+    y_upp = df_cov["marchenko_pastur_upper_bound"]
     y_max = df_cov["eigenvalues_cov_max"]
 
-    ax_1.plot(x_, y_mid, c = "black", marker = "", linestyle = "--", linewidth = 1, label = r"$\lambda_{+}$")
+    ax_1.plot(x_, y_low, c = "black", marker = "", linestyle = "--", linewidth = 1, label = r"$\lambda_{-}$")
+    ax_1.plot(x_, y_upp, c = "black", marker = "", linestyle = "-", linewidth = 1, label = r"$\lambda_{+}$")
     ax_1.fill_between(
         x_,
-        y_mid,
+        y_upp,
         y_max,
-        #where = ((y_max >= y_mid) & (y_mid >= y_min)),
+        #where = ((y_max >= y_upp) & (y_upp >= y_min)),
         alpha = 0.05,
         facecolor = "black",
         interpolate = True,
@@ -163,8 +165,8 @@ def plot_eigen_evolution(
     ax_1.fill_between(
         x_,
         y_min,
-        y_mid,
-        #where = ((y_max >= y_mid) & (y_mid >= y_min)),
+        y_upp,
+        #where = ((y_max >= y_upp) & (y_upp >= y_min)),
         alpha = 0.12,
         facecolor = "red",
         interpolate = True,
@@ -179,7 +181,7 @@ def plot_eigen_evolution(
     ax_1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
     ax_1.set_yscale("log", subs = [2, 3, 4, 5, 6, 7, 8, 9])
     ax_1.set_xlabel("Date", fontsize = fontsize_labels)        
-    ax_1.set_ylabel(r"Covariance eigenvalues $\lambda_{k}^{(c)}(t)$", fontsize = fontsize_labels)
+    ax_1.set_ylabel(r"Covariance eigenvalues $\lambda_{k}^{(c)}(N_{{s}},\tau)$", fontsize = fontsize_labels)
     ax_1.tick_params(axis = "x", labelrotation = 90)
     ax_1.set_xlim(date.fromisoformat(times_cov[0]), date.fromisoformat(times_cov[len(times_cov) - 1]))
     ax_1.legend(
@@ -209,21 +211,23 @@ def plot_eigen_evolution(
             linestyle = "dashed",
             linewidth = 0.5,
             markersize = 2,
-            label = r"$\lambda_{{{}}}^{{(e)}}(t)$".format(id)
+            label = r"$\lambda_{{{}}}^{{(e)}}(N_{{s}},\tau)$".format(id)
         )
 
     # Plot 2 - EEE - Eigenvalues regions bounds (minimum, maximum and Marchenko-Pastur law)
     x_ = df_eigenvalues["final_date"]
     y_min = df_eigenvalues["eigenvalues_entropy_min"]
-    y_mid = df_eigenvalues["marchenko_pastur_upper_bound"]
+    y_low = df_eigenvalues["marchenko_pastur_lower_bound"]
+    y_upp = df_eigenvalues["marchenko_pastur_upper_bound"]
     y_max = df_eigenvalues["eigenvalues_entropy_max"]
 
-    ax_2.plot(x_, y_mid, c = "black", marker = "", linestyle = "-", linewidth = 1, label = r"$\lambda_{+}$")
+    ax_2.plot(x_, y_low, c = "black", marker = "", linestyle = "--", linewidth = 1, label = r"$\lambda_{-}$")
+    ax_2.plot(x_, y_upp, c = "black", marker = "", linestyle = "-", linewidth = 1, label = r"$\lambda_{+}$")
     ax_2.fill_between(
         x_,
-        y_mid,
+        y_upp,
         y_max,
-        #where = ((y_max >= y_mid) & (y_mid >= y_min)),
+        #where = ((y_max >= y_upp) & (y_upp >= y_min)),
         alpha = 0.05,
         facecolor = "black",
         interpolate = True,
@@ -232,8 +236,8 @@ def plot_eigen_evolution(
     ax_2.fill_between(
         x_,
         y_min,
-        y_mid,
-        #where = ((y_max >= y_mid) & (y_mid >= y_min)),
+        y_upp,
+        #where = ((y_max >= y_upp) & (y_upp >= y_min)),
         alpha = 0.12,
         facecolor = "red",
         interpolate = True,
@@ -249,7 +253,7 @@ def plot_eigen_evolution(
     ax_2.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
     ax_2.set_yscale("symlog", linthresh = linear_threshold, subs = [2, 3, 4, 5, 6, 7, 8, 9])
     ax_2.set_xlabel("Date", fontsize = fontsize_labels)        
-    ax_2.set_ylabel(r"Entropy eigenvalues $\lambda_{k}^{(e)}(t)$", fontsize = fontsize_labels)
+    ax_2.set_ylabel(r"Entropy eigenvalues $\lambda_{k}^{(e)}(N_{{s}},\tau)$", fontsize = fontsize_labels)
     ax_2.tick_params(axis = "x", labelrotation = 90)
     ax_2.set_xlim(date.fromisoformat(times_entropy[0]), date.fromisoformat(times_entropy[len(times_entropy) - 1]))
     ax_2.legend(
@@ -299,7 +303,6 @@ def plot_eigen_evolution(
     return 0
 
 # Plot evolution of number of factors and components ----
-# Plot number of factors and components ----
 def plot_market_efficiency(
     df,
     width,
@@ -319,7 +322,8 @@ def plot_market_efficiency(
     input_generation_date="2024-04-22"
 ):
     """Plot number of components and factor for covariance and entropy matrices
-    for different times and compares with Marchenko-Pastur law
+    for different times and compares with Marchenko-Pastur law using Onatski
+    test and Edge distirbution test
 
     Args:
     ---------------------------------------------------------------------------
@@ -422,7 +426,7 @@ def plot_market_efficiency(
                 marker = "o",
                 linestyle = "--",
                 markersize = marker_size,
-                label = r"$n_{CC}^{(c)}(t)$"
+                label = r"$n_{CC}^{(c)}(N_{{s}},\tau)$"
             )
             #ax[k, 1].plot(
             #    dates_j,
@@ -431,7 +435,7 @@ def plot_market_efficiency(
             #    marker = "o",
             #    linestyle = "--",
             #    markersize = marker_size,
-            #    label = r"$n_{CC}^{(e)}(t)$"
+            #    label = r"$n_{CC}^{(e)}(N_{{s}},\tau)$"
             #)
             
             # Factors
@@ -442,7 +446,7 @@ def plot_market_efficiency(
                 marker = "D",
                 linestyle = "",
                 markersize = marker_size,
-                label = r"$n_{F}^{(c)}(t)$"
+                label = r"$n_{F}^{(c)}(N_{{s}},\tau)$"
             )
             ax[k, 1].plot(
                 dates_j,
@@ -451,7 +455,7 @@ def plot_market_efficiency(
                 marker = "D",
                 linestyle = "",
                 markersize = marker_size,
-                label = r"$n_{F}^{(e)}(t)$"
+                label = r"$n_{F}^{(e)}(N_{{s}},\tau)$"
             )
 
             # Edge Distribution
@@ -462,7 +466,7 @@ def plot_market_efficiency(
                 marker = "v",
                 linestyle = "",
                 markersize = marker_size,
-                label = r"$n_{ED}^{(c)}(t)$"
+                label = r"$n_{ED}^{(c)}(N_{{s}},\tau)$"
             )
             ax[k, 1].plot(
                 dates_j,
@@ -471,7 +475,7 @@ def plot_market_efficiency(
                 marker = "v",
                 linestyle = "",
                 markersize = marker_size,
-                label = r"$n_{ED}^{(e)}(t)$"
+                label = r"$n_{ED}^{(e)}(N_{{s}},\tau)$"
             )
 
             # Highlight regions with Factors > Components or Edge distribution > Components
@@ -483,7 +487,7 @@ def plot_market_efficiency(
                 alpha = 0.14,
                 facecolor = "black",
                 interpolate = True,
-                label = r"$n_{CC}^{(c)}(t)<n_{F}^{(c)}(t)$"
+                label = r"$n_{CC}^{(c)}(N_{{s}},\tau)<n_{F}^{(c)}(N_{{s}},\tau)$"
             )
             ax[k, 0].fill_between(
                 dates_j,
@@ -493,7 +497,7 @@ def plot_market_efficiency(
                 alpha = 0.14,
                 facecolor = "orange",
                 interpolate = True,
-                label = r"$n_{CC}^{(c)}(t)<n_{ED}^{(c)}(t)$"
+                label = r"$n_{CC}^{(c)}(N_{{s}},\tau)<n_{ED}^{(c)}(N_{{s}},\tau)$"
             )
             ax[k, 1].fill_between(
                 dates_j,
@@ -503,7 +507,7 @@ def plot_market_efficiency(
                 alpha = 0.12,
                 facecolor = "black",
                 interpolate = True,
-                label = r"$n_{CC}^{(e)}(t)<n_{F}^{(e)}(t)$"
+                label = r"$n_{CC}^{(e)}(N_{{s}},\tau)<n_{F}^{(e)}(N_{{s}},\tau)$"
             )
             ax[k, 1].fill_between(
                 dates_j,
@@ -513,7 +517,7 @@ def plot_market_efficiency(
                 alpha = 0.15,
                 facecolor = "orange",
                 interpolate = True,
-                label = r"$n_{CC}^{(e)}(t)<n_{ED}^{(e)}(t)$"
+                label = r"$n_{CC}^{(e)}(N_{{s}},\tau)<n_{ED}^{(e)}(N_{{s}},\tau)$"
             )
 
             # Axis formatter
@@ -556,6 +560,265 @@ def plot_market_efficiency(
     if save_figures:
         fig.savefig(
             "{}/{}_components_factors_{}.png".format(
+                output_path,
+                information_name,
+                re.sub("-", "", input_generation_date)
+            ),
+            bbox_inches = "tight",
+            facecolor = fig.get_facecolor(),
+            transparent = False,
+            pad_inches = 0.03,
+            dpi = dpi
+        )
+        plt.close()
+
+    return 0
+
+# Plot evolution of number of factors and components using only Entropy matrix and Edge distribution ----
+def plot_market_efficiency_entropy(
+    df_normalized,
+    df_residuals,
+    k_max,
+    width_ratio,
+    width,
+    height,
+    fontsize_labels=13.5,
+    fontsize_legend=11.5,
+    n_cols=4,
+    marker_size=4,
+    n_x_breaks=10,
+    n_y_breaks=10,
+    fancy_legend=False,
+    usetex=False,
+    dpi=200,
+    save_figures=True,
+    output_path="../output_files",
+    information_name="",
+    input_generation_date="2024-04-22"
+):
+    """Plot number of components and factor for entropy matrices for different
+    times and compares with Marchenko-Pastur law using only Edge distribution
+
+    Args:
+    ---------------------------------------------------------------------------
+    df_normalized : pandas DataFrame
+        Dataframe with the covariances and entropies of different financial
+        time series components (shares for stock indexes) with eight columns
+        namely:
+            - initial_date: Lower bound for temporal window
+            - final_date: Upper bound for temporal window
+            - column_: information taken for the calculation of the number of
+            factors
+            - dropped_eigen_cov: Dropped eigenvalues in covariance matrix after
+            Bouchaud clipping filter
+            - dropped_eigen_entropy: Dropped eigenvalues in entropy matrix after
+            Bouchaud clipping filter
+            - alpha: Level of statistical significance for Tracy-Widom test
+            - n_components_cov: Number of significant components for covariance
+            matrix according to Tracy-Widom test
+            - n_components_cov_mp: Number of significant components for
+            covariance matrix according to Marchenko-Pastur law
+            - n_components_entropy: Number of significant components for entropy
+            matrix according to Tracy-Widom test
+            - n_components_entropy_mp: Number of significant components for
+            entropy matrix according to Marchenko-Pastur law
+            - level: Integer values for Onatski test
+            - n_factors_cov: Number of market factors for covariance matrix
+            according to Onatski test
+            - n_factors_entropy: Number of market factors for entropy matrix
+            according to Onatski test
+            - edge_distribution_cov: Number of market factors for covariance
+            matrix according Edge Distribution test
+            - edge_distribution_entropy: Number of market factors for entropy
+            matrix according Edge Distribution test
+    df_residuals : pandas DataFrame
+        Dataframe with the covariances and entropies of different financial
+        time series components (shares for stock indexes) with residuals and
+        same columns of df_normalized
+    k_max : int
+        Maximum number of factors considered in the Onatski test (default value
+        is 8)
+    width_ratio : int
+        Aspect ratio between the evolution of Edge distribution and histogram
+    width : int
+        Width of final plot (default value 12)
+    height : int
+        Height of final plot (default value 28)
+    fontsize_labels : float
+        Font size in axis labels (default value 13.5)
+    fontsize_legend : float
+        Font size in legend (default value 11.5)
+    n_cols : int
+        Number of columns in legend related to plot (default value 4)
+    marker_size : int
+        Point size in market factors plot (default value 4)
+    n_x_breaks : int
+        Number of divisions in x-axis (default value 10)
+    n_y_breaks : int
+        Number of divisions in y-axis (default value 10)
+    fancy_legend : bool
+        Fancy legend output (default value False)
+    usetex : bool
+        Use LaTeX for renderized plots (default value False)
+    dpi : int
+        Dot per inch for output plot (default value 200)
+    save_figures : bool
+        Save figures flag (default value True)
+    output_path : string
+        Local path for outputs (default value is "../output_files")
+    information_name : string
+        Name of the output plot (default value "")
+    input_generation_date : string
+        Date of generation (control version) (default value "2024-08-21")
+        
+    Returns:
+    ---------------------------------------------------------------------------
+    No return for the function
+    """
+
+    # Initialize Plot data
+    rcParams.update({"font.family": "serif", "text.usetex": usetex, "pgf.rcfonts": False})
+
+    # Generation of plotted data and Plot 1: Covariance - Plot 2: Entropy
+    cols = ["final_date", "n_components_entropy", "edge_distribution_entropy"]
+    df_norm = df_normalized[cols].drop_duplicates()
+    df_resi = df_residuals[cols].drop_duplicates()
+    fig, ax = plt.subplots(1, 2, width_ratios = [width_ratio, 1])
+    fig.set_size_inches(w = width, h = height)
+
+    # Local data
+    dates_norm = df_norm["final_date"]
+    n_entropy_norm = df_norm["n_components_entropy"]
+    e_entropy_norm = df_norm["edge_distribution_entropy"]
+
+    dates_resi = df_resi["final_date"]
+    n_entropy_resi = df_resi["n_components_entropy"]
+    e_entropy_resi = df_resi["edge_distribution_entropy"]
+
+    time_labels = pd.date_range(
+        start = dates_norm.min(),
+        end = dates_norm.max(),
+        periods = n_x_breaks
+    ).strftime("%Y-%m-%d")
+    
+    # Plot 1 - Edge Distribution for normalized returns and residuals
+    ax[0].plot(
+        dates_norm,
+        e_entropy_norm,
+        c = "forestgreen",
+        marker = "v",
+        linestyle = "",
+        markersize = marker_size,
+        label = r"$n_{ED}^{(e)}(N_{s},\tau)$"
+    )
+    ax[0].plot(
+        dates_resi,
+        e_entropy_resi,
+        c = "firebrick",
+        marker = "^",
+        linestyle = "",
+        markersize = marker_size,
+        label = r"$\rho_{ED}^{(e)}(N_{s},\tau)$"
+    )
+
+    # Plot 1 - Highlight regions with Edge distribution normalized = residuals
+    try:
+        ax[0].fill_between(
+            dates_resi,
+            0,
+            e_entropy_resi,
+            where = (e_entropy_norm == e_entropy_resi),
+            alpha = 0.15,
+            facecolor = "black",
+            interpolate = True,
+            label = r"$n_{ED}^{(e)}(N_{{s}},\tau)=\rho_{ED}^{(e)}(N_{{s}},\tau)$"
+        )
+    except:
+        pass
+
+    # Plot 2 - Histogram of Edge distirbution
+    weights_norm = np.ones_like(e_entropy_norm) / float(len(e_entropy_norm))
+    weights_resi = np.ones_like(e_entropy_resi) / float(len(e_entropy_resi))
+
+    ax[1].hist(
+        e_entropy_norm,
+        bins = k_max,
+        alpha = 0.12,
+        facecolor = "green",
+        edgecolor = "forestgreen",
+        weights = weights_norm,
+        histtype = "stepfilled",
+        cumulative = False,
+        label = "Normalized returns",
+        linewidth = 4
+    )
+    ax[1].hist(
+        e_entropy_resi,
+        bins = k_max,
+        alpha = 0.12,
+        facecolor = "red",
+        edgecolor = "firebrick",
+        weights = weights_resi,
+        histtype = "stepfilled",
+        cumulative = False,
+        label = "Residuals",
+        linewidth = 4
+    )
+
+    # Axis formatter
+    y_max = np.max([np.max(n_entropy_norm), np.max(e_entropy_norm), np.max(n_entropy_resi), np.max(e_entropy_resi)])
+
+    labels_x = ["Date", "Number of factors"]
+    labels_y = ["Number of factors", "Percentage"]
+    titles = ["Number of factors", "Percentage"]
+    for p in [0, 1]:
+        ax[p].tick_params(which = "major", direction = "in", top = True, right = True, labelsize = fontsize_labels, length = 12)
+        ax[p].tick_params(which = "minor", direction = "in", top = True, right = True, labelsize = fontsize_labels, length = 6)
+        ax[p].yaxis.set_major_locator(mtick.MaxNLocator(n_y_breaks))
+        ax[p].yaxis.set_minor_locator(mtick.MaxNLocator(5 * n_y_breaks))
+        ax[p].set_xlabel(labels_x[p], fontsize = fontsize_labels)        
+        ax[p].set_ylabel(labels_y[p], fontsize = fontsize_labels)
+        ax[p].tick_params(axis = "x", labelrotation = 90)
+        ax[p].set_title(
+            r"({}) {}".format(chr(p + 65), titles[p]),
+            loc = "left",
+            y = 1.005,
+            fontsize = fontsize_legend
+        )
+
+    ax[0].legend(
+        fancybox = fancy_legend,
+        shadow = False,
+        ncol = n_cols,
+        fontsize = fontsize_legend,
+        frameon = True
+    )
+    ax[1].legend(
+        fancybox = fancy_legend,
+        shadow = False,
+        ncol = n_cols,
+        fontsize = fontsize_legend,
+        frameon = True,
+        bbox_to_anchor = (0.5, -0.05)
+    )
+    
+    ax[0].xaxis.set_major_locator(mtick.FixedLocator(time_labels))
+    ax[0].xaxis.set_ticks(time_labels)
+    ax[0].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+    ax[1].xaxis.set_major_locator(mtick.FixedLocator(np.arange(0, k_max + 1, 1)))
+    ax[1].xaxis.set_ticks(np.arange(0, k_max + 1, 1))
+    #ax[1].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+
+    ax[0].set_xlim(date.fromisoformat(time_labels[0]), date.fromisoformat(time_labels[len(time_labels) - 1]))
+    ax[0].set_ylim(0, y_max + 1)
+    ax[1].set_xlim(0, y_max + 1)
+
+    # Save figures
+    plt.show()
+    fig.tight_layout()
+    if save_figures:
+        fig.savefig(
+            "{}/{}_edge_distribution_{}.png".format(
                 output_path,
                 information_name,
                 re.sub("-", "", input_generation_date)
