@@ -125,11 +125,11 @@ The set of codes developed for this data repository is divided into two parts sp
 
 ### Example of the estimation of entropy matrix
 
-To see the use of the entropy matrix and its use in a stock market, we have the notebook ```estimate_covariance_matrix_entropy``` in such a way that it shows a data exploration for a developed market and it is observed how the eigenvalues ​​of the covariance and entropy matrix are differentiated.
+To see the use of the entropy matrix and its use in a stock market, we have the notebook ```estimate_covariance_matrix_entropy``` in such a way that it shows a data exploration for a developed market and it is observed how the eigenvalues of the covariance and entropy matrix are differentiated.
 
 ### Rolling window analysis
 
-To investigate the link between market efficiency and the number of significant factors in asset pricing using an entropy-based approach, a fixed-size moving window analysis is performed in which the spectrum (eigenvalues) of the covariance and entropy matrices are calculated and this is repeated every certain number of days. Finally, this information records the temporal evolution of the eigenvalues ​​of the two matrices, identifies the number of components and the number of significant factors at each time step. To do this, you have the following scripts:
+To investigate the link between market efficiency and the number of significant factors in asset pricing using an entropy-based approach, a fixed-size moving window analysis is performed in which the spectrum (eigenvalues) of the covariance and entropy matrices are calculated and this is repeated every certain number of days. Finally, this information records the temporal evolution of the eigenvalues of the two matrices, identifies the number of components and the number of significant factors at each time step. To do this, you have the following scripts:
 
 1.  process_data_fts
 2.  get_market_factors_rolling_window

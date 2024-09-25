@@ -7,15 +7,16 @@ Created on Thursday June 14 2024
 """
 
 # Libraries ----
-import numpy as np # type: ignore
+import numpy as np  # type: ignore
 
-from tqdm import tqdm # type: ignore
+from tqdm import tqdm  # type: ignore
 from multiprocessing import Pool, cpu_count
+
 
 # Estimation of p-norm ----
 def estimate_p_norm(x, y, p):
     r"""Estimation of p-norm defined as:
-    :math:`\lim_{q\to p}{\left(\frac{1}{N}\sum_{k=1}^{N}|x_{k}-y_{k}|^{q}\right)^{1/q}}` 
+    :math:`\lim_{q\to p}{\left(\frac{1}{N}\sum_{k=1}^{N}|x_{k}-y_{k}|^{q}\right)^{1/q}}`
 
     Args:
     ---------------------------------------------------------------------------
@@ -30,13 +31,14 @@ def estimate_p_norm(x, y, p):
     ---------------------------------------------------------------------------
     z : float
         p-norm estimation between x and y weighted by the size of vectors N
-    """
+    """  # noqa: E501
 
     if p == 0:
         z = np.exp(0.5 * np.mean(np.log(np.power(np.abs(x-y), 2))))
     else:
         z = np.power(np.mean(np.power(np.abs(x - y), p)), 1 / p)
     return z
+
 
 # Estimation of coefficient of determination R2 ----
 def estimate_coefficient_of_determination(y, y_fitted):
@@ -55,7 +57,8 @@ def estimate_coefficient_of_determination(y, y_fitted):
         R2 value (percentage of variance explained by y_fitted)
     """
 
-    return 1 - np.sum(np.power(y - y_fitted, 2)) / np.sum(np.power(y - np.mean(y), 2))
+    return 1 - np.sum(np.power(y - y_fitted, 2)) / np.sum(np.power(y - np.mean(y), 2))  # noqa: E501
+
 
 # Translate vector values to probabilities ----
 def get_probabilities(x, bins=10, density=True):
@@ -85,7 +88,7 @@ def get_probabilities(x, bins=10, density=True):
     """
 
     # Histogram data
-    hist_, bins_ = np.histogram(x, bins = bins, density = density)
+    hist_, bins_ = np.histogram(x, bins=bins, density=density)
 
     # Midpoint per bin
     bins_midpoint_ = np.zeros(len(hist_))
@@ -93,6 +96,7 @@ def get_probabilities(x, bins=10, density=True):
         bins_midpoint_[k] = 0.5 * (bins_[k] + bins_[k+1])
 
     return bins_, bins_midpoint_, hist_
+
 
 # Estimate Shannon entropy over a vector of probabilities ----
 def estimate_renyi_entropy(x, p):
@@ -110,7 +114,7 @@ def estimate_renyi_entropy(x, p):
     ---------------------------------------------------------------------------
     renyi_entropy : float
         Renyi entropy of the sample
-    """
+    """  # noqa: E501
 
     # Normalized array
     x_normalized = x / np.sum(x)
@@ -121,18 +125,19 @@ def estimate_renyi_entropy(x, p):
         renyi_entropy = np.log(len(x))
 
     # Min-entropy
-    elif np.isinf(p) == True:
+    elif np.isinf(p) is True:
         renyi_entropy = -np.log(np.max(x_normalized))
 
     # Shannon entropy
     elif p == 1:
         renyi_entropy = -np.sum(x_normalized * np.log(x_normalized))
-    
+
     # Renyi entropy
     else:
         renyi_entropy = np.log(np.sum(np.power(x_normalized, p))) / (1 - p)
 
     return renyi_entropy
+
 
 # Estimate mutual information over a two vectors of probabilities ----
 def estimate_mutual_information(x, y, joint_xy):
@@ -147,9 +152,9 @@ def estimate_mutual_information(x, y, joint_xy):
         Vector of probabilities or positive values of a sample (marginal). The
         length of this vector is N
     joint_xy : float or numpy array dtype float
-        Vector of joint probabilities or positive values of a sample (joint 
+        Vector of joint probabilities or positive values of a sample (joint
         probability). The length of this vector is M * N
-    
+
     Returns:
     ---------------------------------------------------------------------------
     mutual_information : float
@@ -157,16 +162,17 @@ def estimate_mutual_information(x, y, joint_xy):
     """
 
     # Mutual information
-    hx = estimate_renyi_entropy(x = x, p = 1)
-    hy = estimate_renyi_entropy(x = y, p = 1)
-    hxy = estimate_renyi_entropy(x = joint_xy, p = 1)
-    
+    hx = estimate_renyi_entropy(x=x, p=1)
+    hy = estimate_renyi_entropy(x=y, p=1)
+    hxy = estimate_renyi_entropy(x=joint_xy, p=1)
+
     mutual_information = hx + hy - hxy
     if len(x) == len(y):
         if (np.array(x) == np.array(y)).all():
             mutual_information = hx
 
     return mutual_information
+
 
 # Estimate shared information distance over a two vectors of probabilities ----
 def estimate_shared_information_distance(x, y, joint_xy):
@@ -180,17 +186,18 @@ def estimate_shared_information_distance(x, y, joint_xy):
         Vector of probabilities or positive values of a sample (marginal)
     joint_xy : float or numpy 2D array dtype float
         Matrix of joint probabilities or positive values of a sample (joint)
-    
+
     Returns:
     ---------------------------------------------------------------------------
     shared_information : float
         Shared information distance of the samples
     """
 
-    shared_information = estimate_renyi_entropy(x = joint_xy, p = 1) 
-    shared_information -= estimate_mutual_information(x = x, y = y, joint_xy = joint_xy)
-    
+    shared_information = estimate_renyi_entropy(x=joint_xy, p=1)
+    shared_information -= estimate_mutual_information(x=x, y=y, joint_xy=joint_xy)  # noqa: E501
+
     return shared_information
+
 
 # Deployment of parallel run in function of arguments list ----
 def parallel_run(
@@ -214,23 +221,24 @@ def parallel_run(
     m : list of objects
         Function evaluation in all possible combination of tuples
     """
-    
+
     if tqdm_bar:
         m = []
-        with Pool(processes = cpu_count()) as p:
-            with tqdm(total = len(arg_list), ncols = 60) as pbar:
+        with Pool(processes=cpu_count()) as p:
+            with tqdm(total=len(arg_list), ncols=60) as pbar:
                 for _ in p.imap(fun, arg_list):
                     m.append(_)
                     pbar.update()
             p.terminate()
             p.join()
     else:
-        p = Pool(processes = cpu_count())
+        p = Pool(processes=cpu_count())
         m = p.map(fun, arg_list)
         p.terminate()
         p.join()
 
     return m
+
 
 # Extract scientific notation in Python string ----
 def extract_sci_notation(number, significant_figures=2):
@@ -253,7 +261,8 @@ def extract_sci_notation(number, significant_figures=2):
 
     z = "{0:.{1:d}e}".format(number, significant_figures)
     mantissa, exponent = z.split("e")
-    return mantissa, int(exponent) # Remove leading "+" and strip leading zeros
+    return mantissa, int(exponent)  # Remove leading "+" and strip leading zeros  # noqa: E501
+
 
 # Define scientific notation in LaTeX string ----
 def define_sci_notation_latex(number, significant_figures=2):
@@ -273,11 +282,12 @@ def define_sci_notation_latex(number, significant_figures=2):
     """
 
     mantissa, exponent = extract_sci_notation(
-        number = number,
-        significant_figures = significant_figures
+        number=number,
+        significant_figures=significant_figures
     )
     z = "$" + str(mantissa) + " \\times 10^{" + str(exponent) + "}$"
     return z
+
 
 # Define scientific notation in a vector as Physical Review format ----
 def define_sci_notation_latex_vectorize(x, significant_figures=2):
@@ -298,17 +308,17 @@ def define_sci_notation_latex_vectorize(x, significant_figures=2):
 
     x = sorted(x)
     mantissa_min, exponent_min = extract_sci_notation(
-        number = np.min(np.abs(x)),
-        significant_figures = significant_figures
+        number=np.min(np.abs(x)),
+        significant_figures=significant_figures
     )
-    del(mantissa_min)
+    del (mantissa_min)
 
     z = []
     for i in np.arange(len(x)):
-        z_ = str(round(x[i] / np.float_power(10, exponent_min), significant_figures))
-        if i + 1 == len(x): # Only last element with sci_notation
-            z.append("$" + str(z_) + " \\times 10^{" + str(exponent_min) + "}$")
-        else: # Only mantissa
-            z.append("$" + str(z_) + "$") 
-    
+        z_ = str(round(x[i] / np.float_power(10, exponent_min), significant_figures))  # noqa: E501
+        if i + 1 == len(x):  # Only last element with sci_notation
+            z.append("$" + str(z_) + " \\times 10^{" + str(exponent_min) + "}$")  # noqa: E501
+        else:  # Only mantissa
+            z.append("$" + str(z_) + "$")
+
     return z

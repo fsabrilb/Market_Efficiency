@@ -7,15 +7,14 @@ Created on Thursday June 24 2024
 """
 
 # Libraries ----
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
-import misc_functions as mf
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 import estimate_entropy as ee
 import get_financial_time_series as get_fts
 
-from functools import partial
-from scipy.linalg import eigh # type: ignore
-from scipy.stats import linregress # type: ignore
+from scipy.linalg import eigh  # type: ignore
+from scipy.stats import linregress  # type: ignore
+
 
 # Estimation of Sharpe model ----
 def estimate_sharpe_model(df):
@@ -53,80 +52,81 @@ def estimate_sharpe_model(df):
             ("z_score_lr_no_market" and "z_score_zlr_no_market")
     """
 
-    # Average Market Return (Herinafter LR: log-returns and ZLR: z-score log-returns)
-    df["market_log_return"] = df.groupby(["date"])["log_return"].transform("mean")
-    df["market_z_score_log_return"] = df.groupby(["date"])["z_score_log_return"].transform("mean")
+    # Average Market Return (Herinafter LR: log-returns and ZLR: z-score log-returns)  # noqa: E501
+    df["market_log_return"] = df.groupby(["date"])["log_return"].transform("mean")  # noqa: E501
+    df["market_z_score_log_return"] = df.groupby(["date"])["z_score_log_return"].transform("mean")  # noqa: E501
 
-    # Linear regression per component of financial time series (shares for stock indexes)
+    # Linear regression per component of financial time series (shares for stock indexes)  # noqa: E501
     df_sharpe = []
     for stock in df["symbol"].unique():
         lr = df[df["symbol"] == stock]["log_return"].values
         zlr = df[df["symbol"] == stock]["z_score_log_return"].values
         market_lr = df[df["symbol"] == stock]["market_log_return"].values
-        market_zlr = df[df["symbol"] == stock]["market_z_score_log_return"].values
+        market_zlr = df[df["symbol"] == stock]["market_z_score_log_return"].values  # noqa: E501
         linear_regression_lr = linregress(market_lr, lr)
         linear_regression_zlr = linregress(market_zlr, zlr)
 
         df_sharpe.append(
             pd.DataFrame(
                 {
-                    "symbol" : [stock],
-                    "regressor_lr" : [linear_regression_lr.intercept],
-                    "volatility_lr" : [linear_regression_lr.slope],
-                    "regressor_lr_std" : [linear_regression_lr.intercept_stderr],
-                    "volatility_lr_std" : [linear_regression_lr.stderr],
-                    "rsquared_lr" : [linear_regression_lr.rvalue**2],
-                    "pvalue_lr" : [linear_regression_lr.pvalue],
-                    "regressor_zlr" : [linear_regression_zlr.intercept],
-                    "volatility_zlr" : [linear_regression_zlr.slope],
-                    "regressor_zlr_std" : [linear_regression_zlr.intercept_stderr],
-                    "volatility_zlr_std" : [linear_regression_zlr.stderr],
-                    "rsquared_zlr" : [linear_regression_zlr.rvalue**2],
-                    "pvalue_zlr" : [linear_regression_zlr.pvalue]
+                    "symbol": [stock],
+                    "regressor_lr": [linear_regression_lr.intercept],
+                    "volatility_lr": [linear_regression_lr.slope],
+                    "regressor_lr_std": [linear_regression_lr.intercept_stderr],  # noqa: E501
+                    "volatility_lr_std": [linear_regression_lr.stderr],
+                    "rsquared_lr": [linear_regression_lr.rvalue**2],
+                    "pvalue_lr": [linear_regression_lr.pvalue],
+                    "regressor_zlr": [linear_regression_zlr.intercept],
+                    "volatility_zlr": [linear_regression_zlr.slope],
+                    "regressor_zlr_std": [linear_regression_zlr.intercept_stderr],  # noqa: E501
+                    "volatility_zlr_std": [linear_regression_zlr.stderr],
+                    "rsquared_zlr": [linear_regression_zlr.rvalue**2],
+                    "pvalue_zlr": [linear_regression_zlr.pvalue]
                 }
             )
         )
 
-        #print("- Finished Sharpe model for stock: {}".format(stock))
-    
+        # print("- Finished Sharpe model for stock: {}".format(stock))
+
     # Final Dataframe of sharpe model
     df_sharpe = pd.concat(df_sharpe)
-    df_sharpe = df.merge(right = df_sharpe, how = "left", on = ["symbol"])
+    df_sharpe = df.merge(right=df_sharpe, how="left", on=["symbol"])
 
     # Estimation of residuals or errors in Sharpe model (non-market components)
     df_sharpe["lr_no_market"] = (
         df_sharpe["log_return"]
-            - df_sharpe["regressor_lr"]
-            - df_sharpe["volatility_lr"] * df_sharpe["market_log_return"]
+        - df_sharpe["regressor_lr"]
+        - df_sharpe["volatility_lr"] * df_sharpe["market_log_return"]
     )
 
     df_sharpe["zlr_no_market"] = (
         df_sharpe["z_score_log_return"]
-            - df_sharpe["regressor_zlr"]
-            - df_sharpe["volatility_zlr"] * df_sharpe["market_z_score_log_return"]
+        - df_sharpe["regressor_zlr"]
+        - df_sharpe["volatility_zlr"] * df_sharpe["market_z_score_log_return"]
     )
 
-    df_sharpe["temp_lr_mean"] = df_sharpe.groupby(["symbol"])["lr_no_market"].transform("mean")
-    df_sharpe["temp_zlr_mean"] = df_sharpe.groupby(["symbol"])["zlr_no_market"].transform("mean")
+    df_sharpe["temp_lr_mean"] = df_sharpe.groupby(["symbol"])["lr_no_market"].transform("mean")  # noqa: E501
+    df_sharpe["temp_zlr_mean"] = df_sharpe.groupby(["symbol"])["zlr_no_market"].transform("mean")  # noqa: E501
 
-    df_sharpe["temp_lr_std"] = df_sharpe.groupby(["symbol"])["lr_no_market"].transform("std")
-    df_sharpe["temp_zlr_std"] = df_sharpe.groupby(["symbol"])["zlr_no_market"].transform("std")
-    
+    df_sharpe["temp_lr_std"] = df_sharpe.groupby(["symbol"])["lr_no_market"].transform("std")  # noqa: E501
+    df_sharpe["temp_zlr_std"] = df_sharpe.groupby(["symbol"])["zlr_no_market"].transform("std")  # noqa: E501
+
     df_sharpe["z_score_lr_no_market"] = (
-        (df_sharpe["lr_no_market"] - df_sharpe["temp_lr_mean"]) / df_sharpe["temp_lr_std"]
+        (df_sharpe["lr_no_market"] - df_sharpe["temp_lr_mean"]) / df_sharpe["temp_lr_std"]  # noqa: E501
     )
     df_sharpe["z_score_zlr_no_market"] = (
-        (df_sharpe["zlr_no_market"] - df_sharpe["temp_zlr_mean"]) / df_sharpe["temp_zlr_std"]
+        (df_sharpe["zlr_no_market"] - df_sharpe["temp_zlr_mean"]) / df_sharpe["temp_zlr_std"]  # noqa: E501
     )
 
-    del df_sharpe["temp_lr_mean"], df_sharpe["temp_zlr_mean"], df_sharpe["temp_lr_std"], df_sharpe["temp_zlr_std"]
+    del df_sharpe["temp_lr_mean"], df_sharpe["temp_zlr_mean"], df_sharpe["temp_lr_std"], df_sharpe["temp_zlr_std"]  # noqa: E501
 
-    return(df_sharpe)
+    return df_sharpe
+
 
 # Apply Bouchaud's clipping filter ----
 def clipping_covariance_matrix(covariance_matrix, n):
     """Bouchaud's clipping filter for the noise and non-noise decomposition of
-    the eigenvalues ​​of the covariance random matrix (Marchenko-Pastur
+    the eigenvalues of the covariance random matrix (Marchenko-Pastur
     threshold):
 
     Args:
@@ -143,13 +143,13 @@ def clipping_covariance_matrix(covariance_matrix, n):
         Number of dropped eigenvalues that corresponds to the noise of random
         matrix
     new_covariance_matrix : float
-        New covariance matrix constructed by averaging the eigenvalues ​​that
+        New covariance matrix constructed by averaging the eigenvalues that
         correspond to the noise
     """
 
     # Diagonalized matrix
     eigenvalues, eigenvectors = eigh(covariance_matrix)
-    
+
     # Marchenko-Pastur limit MPL (Theoretical maximum eigenvalue)
     eigenvalue_max = (1.0 + np.sqrt(len(covariance_matrix) / n))**2
 
@@ -157,15 +157,16 @@ def clipping_covariance_matrix(covariance_matrix, n):
     noise = eigenvalues[eigenvalues < eigenvalue_max]
     if len(noise) > 0:
         eigenvalues[eigenvalues < eigenvalue_max] = np.mean(noise)
-    
+
     dropped_eigenvalues = len(covariance_matrix) - len(noise)
 
     # Covariance matrix after decompose the noise
-    new_covariance_matrix = np.cov(eigenvectors@np.diag(eigenvalues)@eigenvectors.T)
+    new_covariance_matrix = np.cov(eigenvectors@np.diag(eigenvalues)@eigenvectors.T)  # noqa: E501
 
-    return(dropped_eigenvalues, new_covariance_matrix)
+    return dropped_eigenvalues, new_covariance_matrix
 
-# Estimate probability of Tracy-Widom distribution given z-score value (quantile function) ----
+
+# Estimate probability of Tracy-Widom distribution given z-score value (quantile function) ----  # noqa: E501
 def estimate_tracy_widom_probability(df_tracy_widom, z_score):
     """Calculate probability of Tracy-Widom distribution given a z-score table:
 
@@ -192,8 +193,8 @@ def estimate_tracy_widom_probability(df_tracy_widom, z_score):
     elif z_score >= df_tracy_widom["z_score"].max():
         prob = 0.0
     else:
-        df_local_tracy_widom = df_tracy_widom[df_tracy_widom["z_score"] < z_score].tail(2)
-        
+        df_local_tracy_widom = df_tracy_widom[df_tracy_widom["z_score"] < z_score].tail(2)  # noqa: E501
+
         # z-score as interpolation of two points
         if df_local_tracy_widom.shape[0] > 1:
             x_0 = df_local_tracy_widom["z_score"].iloc[0]
@@ -201,17 +202,18 @@ def estimate_tracy_widom_probability(df_tracy_widom, z_score):
             delta_x = df_local_tracy_widom["z_score"].iloc[1] - x_0
             delta_y = df_local_tracy_widom["probability"].iloc[1] - y_0
             prob = y_0 + (delta_y / delta_x) * (z_score - x_0)
-        
+
         # z-score as interpolation of one point
         else:
             prob = df_local_tracy_widom["probability"].iloc[0]
-    
-    return(prob)
 
-# Estimate Wishart distribution (multivariate Gamma distribution) from Tracy-Widom probability ----
+    return prob
+
+
+# Estimate Wishart distribution (multivariate Gamma distribution) from Tracy-Widom probability ----  # noqa: E501
 def estimate_wishart_order_2(p, n, df_tracy_widom, lambda_1):
     """Compute the probability of the Tracy-Widom distribution assuming a
-    Wishart distribution for the eigenvalues ​​of the non-noise part of the
+    Wishart distribution for the eigenvalues of the non-noise part of the
     random covariance matrix:
 
     Args:
@@ -239,16 +241,18 @@ def estimate_wishart_order_2(p, n, df_tracy_widom, lambda_1):
     """
 
     mu = np.power(np.sqrt(n - 0.5) + np.sqrt(p - 0.5), 2)
-    sigma = np.sqrt(mu) * np.power(np.sqrt(1 / (n - 0.5)) + np.sqrt(1 / (p - 0.5)), 1.0 / 3)
+    sigma = np.sqrt(mu) * np.power(np.sqrt(1 / (n - 0.5)) + np.sqrt(1 / (p - 0.5)), 1.0 / 3)  # noqa: E501
     z_score_lambda = (n * lambda_1 - mu) / sigma
-    probability = estimate_tracy_widom_probability(df_tracy_widom = df_tracy_widom, z_score = z_score_lambda)
-    return(probability)
+    probability = estimate_tracy_widom_probability(df_tracy_widom=df_tracy_widom, z_score=z_score_lambda)  # noqa: E501
 
-# Estimate number of market components from Tracy-Widom probability given statistical significance (alpha) ----
+    return probability
+
+
+# Estimate number of market components from Tracy-Widom probability given statistical significance (alpha) ----  # noqa: E501
 def get_market_components(df_tracy_widom, eigen_values, n, alpha=0.01):
     """Calculate the number of components in a market using the probability of
     the Tracy-Widom distribution assuming a Wishart distribution for the
-    eigenvalues ​​of the non-noise part of the random covariance matrix:
+    eigenvalues of the non-noise part of the random covariance matrix:
 
     Args:
     ---------------------------------------------------------------------------
@@ -264,34 +268,35 @@ def get_market_components(df_tracy_widom, eigen_values, n, alpha=0.01):
     alpha : float
         Level of statistical significance. For instance alpha=0.01 corresponds
         to a 99% confidence interval
-    
+
     Returns:
     ---------------------------------------------------------------------------
     k : int
         Number of statistically significant eigenvalues (they are below the
         level of statistical significance)
     """
-    
+
     statistical_significances = np.array([])
     for eig_val in eigen_values[np.argsort(-eigen_values)]:
         statistical_significances = np.append(
             statistical_significances,
             estimate_wishart_order_2(
-                p = len(eigen_values),
-                n = n,
-                df_tracy_widom = df_tracy_widom,
-                lambda_1 = eig_val
+                p=len(eigen_values),
+                n=n,
+                df_tracy_widom=df_tracy_widom,
+                lambda_1=eig_val
             )
         )
 
     k = np.argmax(statistical_significances >= alpha)
-    return(k)
+    return k
+
 
 # Estimate number of market components from Marchenko-Pastur law ----
 def get_market_components_marchenko_pastur(eigen_values, n):
     """Calculate the number of components in a market using the probability of
     the Tracy-Widom distribution assuming a Wishart distribution for the
-    eigenvalues ​​of the non-noise part of the random covariance matrix:
+    eigenvalues of the non-noise part of the random covariance matrix:
 
     Args:
     ---------------------------------------------------------------------------
@@ -300,17 +305,18 @@ def get_market_components_marchenko_pastur(eigen_values, n):
     n : int
         Theoretical length of the time series such that q = N/n, where N is the
         number of financial time series (shares in a stock index)
-    
+
     Returns:
     ---------------------------------------------------------------------------
     k : int
         Number of statistically significant eigenvalues (they are below the
         level of Marchenko-Pastur upper bound)
     """
-    
+
     lambda_ = np.power(1 + np.sqrt(len(eigen_values) / n), 2)
     k = np.argmin(eigen_values[np.argsort(-eigen_values)] >= lambda_)
-    return(k)
+    return k
+
 
 # Estimate Onatski R statistic vector ----
 def estimate_onatski_statistic(eigen_values, k_max=8):
@@ -331,10 +337,10 @@ def estimate_onatski_statistic(eigen_values, k_max=8):
         statistically significant factors in a random matrix
     """
 
-    # Estimates R statistic (invariant under center and scaling of the eigenvalues)
-    eigen_values = (np.flipud(eigen_values) - 2) * np.power(len(eigen_values), -2.0 / 3)
+    # Estimates R statistic (invariant under center and scaling of the eigenvalues)  # noqa: E501
+    eigen_values = (np.flipud(eigen_values) - 2) * np.power(len(eigen_values), -2.0 / 3)  # noqa: E501
     eigen_values = eigen_values[:(k_max + 2)]
-    
+
     r_statistic = np.zeros(k_max)
     for i in range(len(r_statistic)):
         delta = eigen_values[i + 1] - eigen_values[i + 2]
@@ -342,10 +348,11 @@ def estimate_onatski_statistic(eigen_values, k_max=8):
             r_statistic[i] = (eigen_values[i] - eigen_values[i + 1]) / delta
         else:
             r_statistic[i] = 0
-    
-    return(r_statistic)
 
-# Estimate number of market factors from Tracy-Widom probability given statistical significance (alpha) ----
+    return r_statistic
+
+
+# Estimate number of market factors from Tracy-Widom probability given statistical significance (alpha) ----  # noqa: E501
 def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
     """Calculate the number of statistically significant factors in a market
     using the z-score table of the Onatski test and Onatski R statistic:
@@ -358,17 +365,18 @@ def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
             - z-score of the R statistic according to the level (other columns)
     r_statistics : numpy array 1D
         Vector with the R statistic values according to Onatski definition with
-        same components of df_onatski columns (see logical values in this function)
+        same components of df_onatski columns (see logical values in this
+        function)
     level : int
         Integer value for filtering df_onatski
-    
+
     Returns:
     ---------------------------------------------------------------------------
     factors : int
         Number of statistically significant factors for a market
     """
 
-    # Modify R statistics vector for taking into account the maximum value per component
+    # Modify R statistics vector for taking into account the maximum value per component  # noqa: E501
     r_statistics_new = np.zeros(len(r_statistics))
     for i in range(len(r_statistics)):
         if i == 0:
@@ -377,17 +385,18 @@ def get_significancy_test_onatski(df_onatski, r_statistics, level=1):
             r_statistics_new[i] = max(r_statistics_new[i - 1], r_statistics[i])
 
     # Estimation of number of factors
-    z_scores = df_onatski[df_onatski["level"] == level].drop(columns = ["level"]).astype(float).values[0]
+    z_scores = df_onatski[df_onatski["level"] == level].drop(columns=["level"]).astype(float).values[0]  # noqa: E501
     logical = r_statistics_new > z_scores
-    
-    if np.all(logical) == True:
+
+    if np.all(logical) is True:
         factors = 8
     else:
-        factors = np.argmax(logical == False)
-    
-    return(factors)
+        factors = np.argmax(logical is False)
 
-# 
+    return factors
+
+
+# Estimate number of factors using modified Edge distirbution test (ED) ----
 def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
     """Calculate the number of statistically significant factors in a market
     using the Onatski algorithm of Edge distribution (ED) (2010):
@@ -412,32 +421,32 @@ def get_onatski_edge_distribution(eigen_values, k_max=7, max_points=1e3):
     eigen_values = np.flipud(eigen_values)
     delta_eigen_values = -np.diff(eigen_values)
 
-    # Auxiliary function for estimate optimal delta (see r(delta) in Onatski (2010))
+    # Auxiliary function for estimate optimal delta (see r(delta) in Onatski (2010))  # noqa: E501
     def r_delta(delta):
         if np.all(delta_eigen_values < delta):
             factors = 0
         else:
             factors = np.max(np.argwhere(delta_eigen_values >= delta)) + 1
 
-        return(factors)
-    
-    regressors = 4
-    j_min = np.power(np.arange(start = 0, stop = regressors, step = 1), 2.0 / 3)
-    j_max = np.power(np.arange(start = k_max, stop = k_max + regressors, step = 1), 2.0 / 3)
-    linear_regression_min = linregress(j_min, eigen_values[0:regressors])
-    linear_regression_max = linregress(j_max, eigen_values[k_max:k_max+regressors])
+        return factors
 
-    delta_min = 2 * np.min(np.abs([linear_regression_min.slope, linear_regression_max.slope]))
-    delta_max = 2 * np.max(np.abs([linear_regression_min.slope, linear_regression_max.slope]))
+    regressors = 4
+    j_min = np.power(np.arange(start=0, stop=regressors, step=1), 2.0 / 3)
+    j_max = np.power(np.arange(start=k_max, stop=k_max + regressors, step=1), 2.0 / 3)  # noqa: E501
+    linear_regression_min = linregress(j_min, eigen_values[0:regressors])
+    linear_regression_max = linregress(j_max, eigen_values[k_max:k_max+regressors])  # noqa: E501
+
+    delta_min = 2 * np.min(np.abs([linear_regression_min.slope, linear_regression_max.slope]))  # noqa: E501
+    delta_max = 2 * np.max(np.abs([linear_regression_min.slope, linear_regression_max.slope]))  # noqa: E501
 
     # Compute number of factors
     factors = np.zeros(int(max_points))
     deltas_ = np.linspace(delta_min, delta_max, int(max_points))
     for k in range(len(deltas_)):
-        factors[k] = r_delta(delta = deltas_[k])
+        factors[k] = r_delta(delta=deltas_[k])
     factors = np.min([np.max(factors), k_max])
-    
-    return(factors)
+
+    return factors
 
 
 # Deployment of total Efficiency Analysis in a time window selected ----
@@ -481,7 +490,8 @@ def get_market_efficiency_data_window(
     log_filename : string
         Local filename for logs (default value is "log_market_efficiency")
     log_filename_entropy : string
-        Local filename for logs of entropy matrix (default value is "log_entropy")
+        Local filename for logs of entropy matrix (default value is
+        "log_entropy")
     verbose : int
         Provides additional details as to what the computer is doing when
         entropy estimation is running (default value is 1)
@@ -491,7 +501,7 @@ def get_market_efficiency_data_window(
         Initial date for time series in ISO format (YYYY-MM-DD)
     final_date : str
         Final date for time series in ISO format (YYYY-MM-DD)
-    
+
     Returns:
     ---------------------------------------------------------------------------
     df_final : pandas DataFrame
@@ -506,54 +516,59 @@ def get_market_efficiency_data_window(
     # Filtered data per window dates
     df_local = df[((df["date"] >= initial_date) & (df["date"] <= final_date))]
 
+    # Reevaluate z-score because data is filtered
+    df_local["z_score_log_return"] = df_local[["log_return"]].apply(lambda x: (x - np.mean(x)) / np.std(x))  # noqa: E501
+
     # Local Sharpe model
-    df_local = estimate_sharpe_model(df = df_local)
+    df_local = estimate_sharpe_model(df=df_local)
 
     # Function development
     if verbose >= 1:
         with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
-            file.write("- Sharpe Model done for dates: {} - {}\n".format(initial_date, final_date))
+            file.write("- Sharpe Model done for dates: {} - {}\n".format(initial_date, final_date))  # noqa: E501
 
     # Estimate covariance matrix
-    df_cov = get_fts.estimate_covariance_stock_index(df = df_local, column_ = column_)
+    df_cov = get_fts.estimate_covariance_stock_index(df=df_local, column_=column_)  # noqa: E501
     symbols_dict = dict(enumerate(df_cov.columns))
-    
+
     df_cov = df_cov.unstack().reset_index()
     df_cov.columns = ["symbol_x", "symbol_y", "correlation"]
     df_cov["symbol_y"] = df_cov["symbol_y"].replace(symbols_dict)
 
     # Estimate entropy matrix
     df_entropy = ee.estimate_entropy_matrix(
-        df = df_local,
-        min_bins = min_bins,
-        precision = precision,
-        column_= column_,
-        log_path = log_path,
-        log_filename = log_filename_entropy,
-        verbose = verbose,
-        tqdm_bar = tqdm_bar
+        df=df_local,
+        min_bins=min_bins,
+        precision=precision,
+        column_=column_,
+        log_path=log_path,
+        log_filename=log_filename_entropy,
+        verbose=verbose,
+        tqdm_bar=tqdm_bar
     )
     df_entropy["modified_rajski_distance"] = 1 - df_entropy["rajski_distance"]
 
     # Function development
     if verbose >= 1:
         with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
-            file.write("- Covariance and entropy matrix done for dates: {} - {}\n".format(initial_date, final_date))
+            file.write("- Covariance and entropy matrix done for dates: {} - {}\n".format(initial_date, final_date))  # noqa: E501
 
     # Merge all data in single dataframe
-    df_final = df_entropy.merge(right = df_cov, how = "left", on = ["symbol_x", "symbol_y"])
+    df_final = df_entropy.merge(right=df_cov, how="left", on=["symbol_x", "symbol_y"])  # noqa: E501
     df_final["initial_date"] = initial_date
     df_final["final_date"] = final_date
     df_final.insert(0, "initial_date", df_final.pop("initial_date"))
     df_final.insert(1, "final_date", df_final.pop("final_date"))
-    
+
     # Function development
     if verbose >= 1:
         with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
-            file.write("- Final data done for dates: {} - {}\n".format(initial_date, final_date))
+            file.write("- Final data done for dates: {} - {}\n".format(initial_date, final_date))  # noqa: E501
 
-    return(df_final)
+    return df_final
 
+
+# Estimate market efficiency (deployment of module) ----
 def get_market_efficiency(
     df,
     column_,
@@ -577,7 +592,7 @@ def get_market_efficiency(
     selected time window such that:
         initial_date = market_args_list[0]
         final_date   = market_args_list[1]
-        
+
     Args:
     ---------------------------------------------------------------------------
     df : pandas DataFrame
@@ -601,7 +616,8 @@ def get_market_efficiency(
     log_filename : string
         Local filename for logs (default value is "log_market_efficiency")
     log_filename_entropy : string
-        Local filename for logs of entropy matrix (default value is "log_entropy")
+        Local filename for logs of entropy matrix (default value is
+        "log_entropy")
     verbose : int
         Provides additional details as to what the computer is doing when
         entropy estimation is running (default value is 1)
@@ -631,9 +647,9 @@ def get_market_efficiency(
         Dataframe of quantiles of Onatski test distribution:
             - Level ("level")
             - z-score of the R statistic according to the level (other columns)
-	levels : int
+    levels : int
         Integer values for filtering df_onatski
-    
+
     Returns:
     ---------------------------------------------------------------------------
     df_final : pandas DataFrame
@@ -645,37 +661,37 @@ def get_market_efficiency(
 
     # Get data for estimation of market efficiency
     df_data = get_market_efficiency_data_window(
-        df = df,
-        column_ = column_,
-        min_bins = min_bins,
-        precision = precision,
-        log_path = log_path,
-        log_filename = log_filename,
-        log_filename_entropy = log_filename_entropy,
-        verbose = verbose,
-        tqdm_bar = tqdm_bar,
-        market_args_list = market_args_list
+        df=df,
+        column_=column_,
+        min_bins=min_bins,
+        precision=precision,
+        log_path=log_path,
+        log_filename=log_filename,
+        log_filename_entropy=log_filename_entropy,
+        verbose=verbose,
+        tqdm_bar=tqdm_bar,
+        market_args_list=market_args_list
     )
 
     # Matrix preparation
     df_cov = (
         df_data[["symbol_x", "symbol_y", "correlation"]]
-            .sort_values(["symbol_x", "symbol_y", "correlation"], ascending = [True, True, True])
-            .drop_duplicates(subset = ["symbol_x", "symbol_y"])
-            .pivot(index = "symbol_x", columns = "symbol_y", values = "correlation")
+        .sort_values(["symbol_x", "symbol_y", "correlation"], ascending=[True, True, True])  # noqa: E501
+        .drop_duplicates(subset=["symbol_x", "symbol_y"])
+        .pivot(index="symbol_x", columns="symbol_y", values="correlation")
     )
 
     df_entropy = (
         df_data[["symbol_x", "symbol_y", "modified_rajski_distance"]]
-            .sort_values(["symbol_x", "symbol_y", "modified_rajski_distance"], ascending = [True, True, True])
-            .drop_duplicates(subset = ["symbol_x", "symbol_y"])
-            .pivot(index = "symbol_x", columns = "symbol_y", values = "modified_rajski_distance")
+        .sort_values(["symbol_x", "symbol_y", "modified_rajski_distance"], ascending=[True, True, True])  # noqa: E501
+        .drop_duplicates(subset=["symbol_x", "symbol_y"])
+        .pivot(index="symbol_x", columns="symbol_y", values="modified_rajski_distance")  # noqa: E501
     )
 
     # Apply Bouchaud's clipping filter
     if bouchaud_filter:
-        dropped_eigenvalues_cov, df_cov = clipping_covariance_matrix(covariance_matrix = df_cov, n = n)
-        dropped_eigenvalues_entropy, df_entropy = clipping_covariance_matrix(covariance_matrix = df_entropy, n = n)
+        dropped_eigenvalues_cov, df_cov = clipping_covariance_matrix(covariance_matrix=df_cov, n=n)  # noqa: E501
+        dropped_eigenvalues_entropy, df_entropy = clipping_covariance_matrix(covariance_matrix=df_entropy, n=n)  # noqa: E501
     else:
         dropped_eigenvalues_cov = 0
         dropped_eigenvalues_entropy = 0
@@ -684,7 +700,7 @@ def get_market_efficiency(
     eigenvalues_cov = eigh(df_cov)[0]
     eigenvalues_entropy = eigh(df_entropy)[0]
 
-    # Apply Tracy-Widom test and Marchenko-Pastur law for market components estimation
+    # Apply Tracy-Widom test and Marchenko-Pastur law for market components estimation  # noqa: E501
     components_cov = []
     components_cov_mp = []
     components_entropy = []
@@ -693,103 +709,103 @@ def get_market_efficiency(
         try:
             components_cov.append(
                 get_market_components(
-                    df_tracy_widom = df_tracy_widom,
-                    eigen_values = eigenvalues_cov,
-                    n = n,
-                    alpha = alpha_
+                    df_tracy_widom=df_tracy_widom,
+                    eigen_values=eigenvalues_cov,
+                    n=n,
+                    alpha=alpha_
                 )
             )
 
             components_cov_mp.append(
-                get_market_components_marchenko_pastur(eigen_values = eigenvalues_cov, n = n)
+                get_market_components_marchenko_pastur(eigen_values=eigenvalues_cov, n=n)  # noqa: E501
             )
 
             components_entropy.append(
                 get_market_components(
-                    df_tracy_widom = df_tracy_widom,
-                    eigen_values = eigenvalues_entropy,
-                    n = n,
-                    alpha = alpha_
+                    df_tracy_widom=df_tracy_widom,
+                    eigen_values=eigenvalues_entropy,
+                    n=n,
+                    alpha=alpha_
                 )
             )
 
             components_entropy_mp.append(
-                get_market_components_marchenko_pastur(eigen_values = eigenvalues_entropy, n = n)
+                get_market_components_marchenko_pastur(eigen_values=eigenvalues_entropy, n=n)  # noqa: E501
             )
 
-        except Exception as e:
+        except Exception:
             components_cov.append(0)
             components_cov_mp.append(0)
             components_entropy.append(0)
             components_entropy_mp.append(0)
-    
+
     # Apply Onatski R statistic test for market factors estimation
-    r_statistic_cov = estimate_onatski_statistic(eigen_values = eigenvalues_cov, k_max = k_max)
-    r_statistic_entropy = estimate_onatski_statistic(eigen_values = eigenvalues_entropy, k_max = k_max)
-    
+    r_statistic_cov = estimate_onatski_statistic(eigen_values=eigenvalues_cov, k_max=k_max)  # noqa: E501
+    r_statistic_entropy = estimate_onatski_statistic(eigen_values=eigenvalues_entropy, k_max=k_max)  # noqa: E501
+
     factors_cov = []
     factors_entropy = []
     for level_ in levels:
         try:
             factors_cov.append(
                 get_significancy_test_onatski(
-                    df_onatski = df_onatski,
-                    r_statistics = r_statistic_cov,
-                    level = level_
+                    df_onatski=df_onatski,
+                    r_statistics=r_statistic_cov,
+                    level=level_
                 )
             )
 
             factors_entropy.append(
                 get_significancy_test_onatski(
-                    df_onatski = df_onatski,
-                    r_statistics = r_statistic_entropy,
-                    level = level_
+                    df_onatski=df_onatski,
+                    r_statistics=r_statistic_entropy,
+                    level=level_
                 )
             )
-        except Exception as e:
+        except Exception:
             factors_cov.append(k_max)
             factors_entropy.append(k_max)
 
             # Function development ----
-            #if verbose >= 1:
-            #    with open("{}/{}.txt".format(log_path, log_filename), "a") as file:
-            #        file.write("No estimated TFS parameters for {} with {} max steps and {}-norm\n".format(symbol, n_step, p_norm))
-            #        file.write("{}\n".format(e))
+            # if verbose >= 1:
+            #     with open("{}/{}.txt".format(log_path, log_filename), "a") as file:  # noqa: E501
+            #         file.write("No estimated TFS parameters for {} with {} max steps and {}-norm\n".format(symbol, n_step, p_norm))  # noqa: E501
+            #         file.write("{}\n".format(e))
 
     # Estimate Edge distribution (ED)
     try:
         edge_distribution_cov = get_onatski_edge_distribution(
-            eigen_values = eigenvalues_cov,
-            k_max = k_max,
-            max_points = 1e3
+            eigen_values=eigenvalues_cov,
+            k_max=k_max,
+            max_points=1e3
         )
         edge_distribution_entropy = get_onatski_edge_distribution(
-            eigen_values = eigenvalues_entropy,
-            k_max = k_max,
-            max_points = 1e3
+            eigen_values=eigenvalues_entropy,
+            k_max=k_max,
+            max_points=1e3
         )
-    except:
+    except Exception:
         edge_distribution_cov = 0
         edge_distribution_entropy = 0
 
     # Final dataframe resume
     df_final = pd.DataFrame(
         {
-            "initial_date" : np.repeat(market_args_list[0], len(alphas) * len(levels)),
-            "final_date" : np.repeat(market_args_list[1], len(alphas) * len(levels)),
-            "column_" : np.repeat(column_, len(alphas) * len(levels)),
-            "dropped_eigen_cov" : np.repeat(dropped_eigenvalues_cov, len(alphas) * len(levels)),
-            "dropped_eigen_entropy" : np.repeat(dropped_eigenvalues_entropy, len(alphas) * len(levels)),
-            "alpha" : np.tile(alphas, len(levels)),
-            "n_components_cov" : np.tile(components_cov, len(levels)),
-            "n_components_cov_mp" : np.tile(components_cov_mp, len(levels)),
-            "n_components_entropy" : np.tile(components_entropy, len(levels)),
-            "n_components_entropy_mp" : np.tile(components_entropy_mp, len(levels)),
-            "level" : np.repeat(levels, len(alphas)),
-            "n_factors_cov" : np.repeat(factors_cov, len(alphas)),
-            "n_factors_entropy" : np.repeat(factors_entropy, len(alphas)),
-            "edge_distribution_cov" : np.repeat(edge_distribution_cov, len(alphas) * len(levels)),
-            "edge_distribution_entropy" : np.repeat(edge_distribution_entropy, len(alphas) * len(levels))
+            "initial_date": np.repeat(market_args_list[0], len(alphas) * len(levels)),  # noqa: E501
+            "final_date": np.repeat(market_args_list[1], len(alphas) * len(levels)),  # noqa: E501
+            "column_": np.repeat(column_, len(alphas) * len(levels)),
+            "dropped_eigen_cov": np.repeat(dropped_eigenvalues_cov, len(alphas) * len(levels)),  # noqa: E501
+            "dropped_eigen_entropy": np.repeat(dropped_eigenvalues_entropy, len(alphas) * len(levels)),  # noqa: E501
+            "alpha": np.tile(alphas, len(levels)),
+            "n_components_cov": np.tile(components_cov, len(levels)),
+            "n_components_cov_mp": np.tile(components_cov_mp, len(levels)),
+            "n_components_entropy": np.tile(components_entropy, len(levels)),
+            "n_components_entropy_mp": np.tile(components_entropy_mp, len(levels)),  # noqa: E501
+            "level": np.repeat(levels, len(alphas)),
+            "n_factors_cov": np.repeat(factors_cov, len(alphas)),
+            "n_factors_entropy": np.repeat(factors_entropy, len(alphas)),
+            "edge_distribution_cov": np.repeat(edge_distribution_cov, len(alphas) * len(levels)),  # noqa: E501
+            "edge_distribution_entropy": np.repeat(edge_distribution_entropy, len(alphas) * len(levels))  # noqa: E501
         }
     )
 
@@ -798,31 +814,31 @@ def get_market_efficiency(
     marchenko_pastur_upper = np.power(1 + np.sqrt(len(eigenvalues_cov) / n), 2)
     df_eigen_values = pd.DataFrame(
         {
-            "initial_date" : np.repeat(market_args_list[0], len(eigenvalues_cov)),
-            "final_date" : np.repeat(market_args_list[1], len(eigenvalues_cov)),
-            "column_" : np.repeat(column_, len(eigenvalues_cov)),
-            "marchenko_pastur_lower_bound" : np.repeat(marchenko_pastur_lower, len(eigenvalues_cov)),
-            "marchenko_pastur_upper_bound" : np.repeat(marchenko_pastur_upper, len(eigenvalues_cov)),
-            "eigenvalues_id" : np.arange(len(eigenvalues_cov)),
-            "eigenvalues_cov" : eigenvalues_cov,
-            "eigenvalues_entropy" : eigenvalues_entropy
+            "initial_date": np.repeat(market_args_list[0], len(eigenvalues_cov)),  # noqa: E501
+            "final_date": np.repeat(market_args_list[1], len(eigenvalues_cov)),  # noqa: E501
+            "column_": np.repeat(column_, len(eigenvalues_cov)),
+            "marchenko_pastur_lower_bound": np.repeat(marchenko_pastur_lower, len(eigenvalues_cov)),  # noqa: E501
+            "marchenko_pastur_upper_bound": np.repeat(marchenko_pastur_upper, len(eigenvalues_cov)),  # noqa: E501
+            "eigenvalues_id": np.arange(len(eigenvalues_cov)),
+            "eigenvalues_cov": eigenvalues_cov,
+            "eigenvalues_entropy": eigenvalues_entropy
         }
     )
 
-    return(df_final, df_eigen_values)
+    return df_final, df_eigen_values
 
 # RESIDUALS EFFICIENCY
 # scipy.optimize.minimize doesn't works well
-#result = minimize(
-#    r_delta,
-#    x0 = 1,
-#    bounds = [(delta_min, delta_max)],
-#    method = "nelder-mead",
-#    options = {"disp" : True, "xatol" : 1e-12}
-#)
-#if result.success:
-#    fitted_delta = result.x
-#    print(fitted_delta)
-#    print(result.fun)
-#else:
+# result = minimize(
+#     r_delta,
+#     x0 = 1,
+#     bounds = [(delta_min, delta_max)],
+#     method = "nelder-mead",
+#     options = {"disp" : True, "xatol" : 1e-12}
+# )
+# if result.success:
+#     fitted_delta = result.x
+#     print(fitted_delta)
+#     print(result.fun)
+# else:
 #    raise ValueError(result.message)
